@@ -23,3 +23,5 @@ Route::get('/listApps', [ResourceController::class, 'displayListApps'])->name('a
 Route::get('/listProducts/{appId}', [ResourceController::class, 'displayListProducts'])->name('products.list');
 
 Route::get('/listReviews/{productId}', [ResourceController::class, 'displayListReviews'])->name('reviews.list');
+
+Route::get('/test', [CrawController::class, 'test'])->name('test');

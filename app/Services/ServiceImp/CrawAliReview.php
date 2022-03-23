@@ -2,26 +2,22 @@
 namespace App\Services\ServiceImp;
 use App\Services\CrawService;
 use GuzzleHttp\Client;
+use Secomapp\ClientApi;
+use Secomapp\Resources\Product;
 use Symfony\Component\DomCrawler\Crawler;
 use GuzzleHttp\Exception\RequestException;
+use App\Services\ReviewService;
 
 class CrawAliReview implements CrawService{
-    public function crawData($url){
+    protected ReviewService $reviewService;
+
+    public function crawData($url, $productId){
+        $this->reviewService = new ReviewService();
+        $src = $this->getUrlWidgetAliReviews($url);
+        
+        if(is_null($src)) return false;
+
         $client = new Client();
-        try{
-            $response = $client->get($url);
-        }catch(RequestException $e){
-            return [];
-        }
-        
-        $htmlString = strip_tags($response->getBody(), ["<iframe>"]);
-        
-        // crawler
-        $crawler = new Crawler($htmlString);
-        $src = $crawler->filter(".aliReviewsFrame")->reduce(function (Crawler $node, $i){
-            return ($node->attr("widget-id"));
-        })->attr("data-ar-src");
-    
         $urlAliReview = $src."&currentPage=";
         $currPage = 1;
         $aliReviews = [];
@@ -48,10 +44,63 @@ class CrawAliReview implements CrawService{
                 break;
             }
 
-            $aliReviews = array_merge($aliReviews, $row);
+            foreach($row as $review){
+                $this->reviewService->add([
+                    'productId' => $productId,
+                    'rate' => $review['rate'],
+                    'authorName' => $review['author']['name'],
+                    'authorAvt' => $review['author']['avt'],
+                    'content' => $review['content'],
+                    'img' => $review['img'],
+                    'date' => $review['date'],
+                    'numberLike' => $review['number_like'],
+                    'numberUnlike' => $review['number_unlike']
+                ]);
+            }
+
             $currPage += 1;
         }
 
-        return $aliReviews;
+        return true;
     }
+
+    public function checkAliReviewsInstall($shopName, $accessToken){
+        $client = new ClientApi(false, "2022-01", $shopName, $accessToken);
+        $productApi = new Product($client);
+        try{
+            $products = $productApi->all([
+                'limit' => 1
+            ]);
+        }catch(ShopifyApiException $e){
+            return false;
+        }
+        if(count($products) == 0) return false;
+        $product = $products[0];
+        $urlProduct = 'https://'.$shopName.'.myshopify.com/products/'.$product->handle;
+        return is_null($this->getUrlWidgetAliReviews($urlProduct))?false:true;
+    }
+
+    public function getUrlWidgetAliReviews($url){
+        $client = new Client();
+        try{
+            $response = $client->get($url);
+        }catch(RequestException $e){
+            return null;
+        }
+        
+        $htmlString = strip_tags($response->getBody(), ["<iframe>"]);
+
+        // crawler
+        $crawler = new Crawler($htmlString);
+        try{
+            $src = $crawler->filter(".aliReviewsFrame")->reduce(function (Crawler $node, $i){
+                return ($node->attr("widget-id"));
+            })->attr("data-ar-src");
+        }catch(\InvalidArgumentException $e){
+            return null;
+        }
+        
+        return $src;
+    }
+
 }

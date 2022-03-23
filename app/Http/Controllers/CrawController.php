@@ -26,67 +26,6 @@ class CrawController extends Controller
     }
 
     public function index(){
-        // ini_set('max_execution_time', 300);
-        // $shopName = "rv-test-1";
-        // $accessToken = "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";  
-
-        // $client = new ClientApi(false, "2022-01", $shopName, $accessToken);
-        // $productApi = new Product($client);
-
-        // try{
-        //     $products = $productApi->all();
-        // }catch(ShopifyApiException $e){
-        //     dump("error authorize"); return;
-        //     return response()->json([
-        //         'data' => [
-        //             'message' => $e->getMessage()
-        //         ]
-        //     ]);
-        // }
-
-        // dump($products); return;
-
-        // $appId = $this->appService->add([
-        //     'shopName' => $shopName,
-        //     'accessToken' => $accessToken
-        // ]);
-
-        // $this->crawService = new CrawAliReview();
-        // foreach($products as $product){
-        //     $productId = $this->productService->add([
-        //         'appId' => $appId,
-        //         'title' => $product->title,
-        //         'vendor' => $product->vendor,
-        //         'productType' => $product->product_type,
-        //         'status' => $product->status,
-        //         'tags' => $product->tags,
-        //         'handle' => $product->handle
-        //     ]);
-
-        //     $urlProduct = 'https://'.$shopName.'.myshopify.com/products/'.$product->handle;
-        //     $reviews = $this->crawService->crawData($urlProduct);
-            
-        //     foreach($reviews as $review){
-        //         $this->reviewService->add([
-        //             'productId' => $productId,
-        //             'rate' => $review['rate'],
-        //             'authorName' => $review['author']['name'],
-        //             'authorAvt' => $review['author']['avt'],
-        //             'content' => $review['content'],
-        //             'img' => $review['img'],
-        //             'date' => $review['date'],
-        //             'numberLike' => $review['number_like'],
-        //             'numberUnlike' => $review['number_unlike']
-        //         ]);
-        //     }
-        // }
-        // dump("success roi nha!"); return;
-        // return response()->json([
-        //     'data' => [
-        //         'message' => "Craw data success!"
-        //     ]
-        // ]);
-
         return view('index');
     }
 
@@ -95,15 +34,18 @@ class CrawController extends Controller
         $shopName = $request->shopName;
         $accessToken = $request->accessToken;  
 
-        $client = new ClientApi(false, "2022-01", $shopName, $accessToken);
-        $productApi = new Product($client);
-
-        try{
-            $products = $productApi->all();
-        }catch(ShopifyApiException $e){
+        $this->crawService = new CrawAliReview(); 
+        if(!$this->checkValidToken($shopName, $accessToken)){
             return response()->json([
                 'type' => 'error',
-                'message' => $e->getMessage()
+                'message' => 'Shop name or Token invalid!'
+            ]);
+        }
+
+        if(!$this->crawService->checkAliReviewsInstall($shopName, $accessToken)){
+            return response()->json([
+                'type' => 'error',
+                'message' => 'Shop dont install AliReviews App or Shop has no products!'
             ]);
         }
 
@@ -112,33 +54,41 @@ class CrawController extends Controller
             'accessToken' => $accessToken
         ]);
 
-        $this->crawService = new CrawAliReview();
-        foreach($products as $product){
-            $productId = $this->productService->add([
-                'appId' => $appId,
-                'title' => $product->title,
-                'vendor' => $product->vendor,
-                'productType' => $product->product_type,
-                'status' => $product->status,
-                'tags' => $product->tags,
-                'handle' => $product->handle
-            ]);
-
-            $urlProduct = 'https://'.$shopName.'.myshopify.com/products/'.$product->handle;
-            $reviews = $this->crawService->crawData($urlProduct);
-            foreach($reviews as $review){
-                $this->reviewService->add([
-                    'productId' => $productId,
-                    'rate' => $review['rate'],
-                    'authorName' => $review['author']['name'],
-                    'authorAvt' => $review['author']['avt'],
-                    'content' => $review['content'],
-                    'img' => $review['img'],
-                    'date' => $review['date'],
-                    'numberLike' => $review['number_like'],
-                    'numberUnlike' => $review['number_unlike']
+        $client = new ClientApi(false, "2022-01", $shopName, $accessToken);
+        $productApi = new Product($client);
+        $markProductId = 0;
+        while(1){
+            try{
+                $row = $productApi->all([
+                    'limit' => 250,
+                    'since_id' => $markProductId
+                ]);
+            }catch(ShopifyApiException $e){
+                return response()->json([
+                    'type' => 'error',
+                    'message' => $e->getMessage()
                 ]);
             }
+
+            if(count($row) == 0) break;
+            $markProductId = $row[count($row)-1]->id;
+            
+            foreach($row as $product){
+                $productId = $this->productService->add([
+                    'appId' => $appId,
+                    'title' => $product->title,
+                    'vendor' => $product->vendor,
+                    'productType' => $product->product_type,
+                    'status' => $product->status,
+                    'tags' => $product->tags,
+                    'handle' => $product->handle
+                ]);
+
+                $urlProduct = 'https://'.$shopName.'.myshopify.com/products/'.$product->handle;
+                $this->crawService->crawData($urlProduct, $productId);
+            }
+
+            sleep(0.5);
         }
 
         return response()->json([
@@ -147,4 +97,65 @@ class CrawController extends Controller
         ]);
         
     }
+
+    public function checkValidToken($shopName, $accessToken){
+        $client = new ClientApi(false, "2022-01", $shopName, $accessToken);
+        $productApi = new Product($client);
+        try{
+            $products = $productApi->all([
+                'limit' => 1
+            ]);
+        }catch(ShopifyApiException $e){
+            return false;
+        }
+
+        return true;
+    }
+
+    // public function test(){
+    //     ini_set('max_execution_time', 1800);
+    //     $this->crawService = new crawAliReview();
+    //     $shopName = "rv-test-1";
+    //     $accessToken = "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";
+    //     $appId = $this->appService->add([
+    //         'shopName' => $shopName,
+    //         'accessToken' => $accessToken
+    //     ]);
+    //     $client = new ClientApi(false, "2022-01", $shopName, $accessToken);
+    //     $productApi = new Product($client);
+    //     $markProductId = 0;
+    //     while(1){
+    //         try{
+    //             $row = $productApi->all([
+    //                 'limit' => 250,
+    //                 'since_id' => $markProductId
+    //             ]);
+    //         }catch(ShopifyApiException $e){
+    //             return response()->json([
+    //                 'type' => 'error',
+    //                 'message' => $e->getMessage()
+    //             ]);
+    //         }
+
+    //         if(count($row) == 0) break;
+    //         $markProductId = $row[count($row)-1]->id;
+            
+    //         foreach($row as $product){
+    //             $productId = $this->productService->add([
+    //                 'appId' => $appId,
+    //                 'title' => $product->title,
+    //                 'vendor' => $product->vendor,
+    //                 'productType' => $product->product_type,
+    //                 'status' => $product->status,
+    //                 'tags' => $product->tags,
+    //                 'handle' => $product->handle
+    //             ]);
+
+    //             $urlProduct = 'https://'.$shopName.'.myshopify.com/products/'.$product->handle;
+    //             $this->crawService->crawData($urlProduct, $productId);
+    //         }
+
+    //         sleep(0.5);
+    //     }
+    // }
 }

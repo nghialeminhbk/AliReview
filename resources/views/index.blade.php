@@ -14,18 +14,19 @@
    <div class="container bg-body p-3">
     <div class="d-flex flex-column align-items-center mb-5">
         <h2>AliReview</h2>
-        <div class="d-flex w-100">
+        <form class="d-flex w-100">
             @csrf
             <div class="form flex-grow-1 me-3">
-                <div class="form-group mb-3">
+                <div class="form-group input-group mb-3">
                     <input type="text" name="shopName" class="form-control" placeholder="Shop name (shop-name.myshopify.com ... )" required>
+                    <span class="input-group-text">.myshopify.com</span>
                 </div>
                 <div class="form-group">
                     <input type="text" name="accessToken" class="form-control" placeholder="Access token ..." required>
                 </div>
             </div>
-            <button class="btn-success px-3 rounded" id="crawBtn">Craw</button>
-        </div>
+            <button type="submit" class="btn-success px-3 rounded" id="crawBtn">Craw</button>
+        </form>
     </div>
     <div id="message" class="mb-5 text-center fs-3">
 
@@ -43,6 +44,10 @@ $(document).ready(function(){
             let shopName = $('input[name=shopName]').val();
             let accessToken = $('input[name=accessToken]').val();
             e.preventDefault();
+            if(shopName == "" || accessToken == ""){
+                toastr.warning("Fill full the information!");
+                return;
+            }
             var convert_seconds_to_ms = (seconds) => {
                 let m = Math.floor(seconds / 60);
                 let s = seconds - m * 60;

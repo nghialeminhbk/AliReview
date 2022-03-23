@@ -3,5 +3,5 @@ namespace App\Services;
 
 interface CrawService
 {
-    public function crawData($url);
+    public function crawData($url, $productId);
 }
