@@ -6,6 +6,7 @@ use Secomapp\ClientApi;
 use Secomapp\Resources\Product;
 use Symfony\Component\DomCrawler\Crawler;
 use GuzzleHttp\Exception\RequestException;
+use Secomapp\Exceptions\ShopifyApiException;
 use App\Services\ReviewService;
 
 class CrawAliReview implements CrawService{

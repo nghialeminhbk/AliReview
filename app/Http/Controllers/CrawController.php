@@ -19,11 +19,11 @@ class CrawController extends Controller
     protected ProductService $productService;
     protected ReviewService $reviewService;
 
-    public function __construct(AppService $appService, ProductService $productService, ReviewService $reviewService){
-        $this->appService = $appService;
-        $this->productService = $productService;
-        $this->reviewService = $reviewService;
-    }
+    // public function __construct(AppService $appService, ProductService $productService, ReviewService $reviewService){
+    //     $this->appService = $appService;
+    //     $this->productService = $productService;
+    //     $this->reviewService = $reviewService;
+    // }
 
     public function index(){
         return view('index');
@@ -31,6 +31,10 @@ class CrawController extends Controller
 
     public function craw(Request $request){
         ini_set('max_execution_time', 1800);
+        $this->appService = new AppService();
+        $this->productService = new ProductService();
+        $this->reviewService = new ReviewService();
+
         $shopName = $request->shopName;
         $accessToken = $request->accessToken;  
 
