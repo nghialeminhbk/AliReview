@@ -33,11 +33,16 @@ class CrawAliReview implements CrawService{
                         'avt' => $node->filter('.alireview-avatar')->attr('data-src'),
                         'name' => $node->filter('.alireview-author')->text()
                     ],
+                    'title' => null,
                     'content' => $node->filter('.alireview-post > p')->text(),
-                    'img'=> count($node->filter('.alireview-product-img > img'))>0?$node->filter('.alireview-product-img > img')->attr('data-src'):null,
-                    'date' => $node->filter('.alireview-date')->text(),
-                    'number_like' => $node->filter('.alireview-number-like')->text(),
-                    'number_unlike' => $node->filter('.alireview-number-unlike')->text()
+                    'img'=> count($node->filter('.alireview-product-img > img'))>0?json_encode($node->filter('.alireview-product-img > img')->each(function(Crawler $node){
+                        return $node->attr('data-src');
+                    })):null,
+                    'createdAt' => $node->filter('.alireview-date')->text(),
+                    'storeReply' => null,
+                    'storeReplyCreated' => null,
+                    'numberLike' => $node->filter('.alireview-number-like')->text(),
+                    'numberDislike' => $node->filter('.alireview-number-unlike')->text()
                 ];
             });
 
@@ -51,34 +56,42 @@ class CrawAliReview implements CrawService{
                     'rate' => $review['rate'],
                     'authorName' => $review['author']['name'],
                     'authorAvt' => $review['author']['avt'],
+                    'title' => $review['title'],
                     'content' => $review['content'],
                     'img' => $review['img'],
-                    'date' => $review['date'],
-                    'numberLike' => $review['number_like'],
-                    'numberUnlike' => $review['number_unlike']
+                    'createdAt' => $review['createdAt'],
+                    'storeReply' => $review['storeReply'],
+                    'storeReplyCreated' => $review['storeReplyCreated'],
+                    'numberLike' => $review['numberLike'],
+                    'numberDislike' => $review['numberDislike']
                 ]);
             }
 
-            $currPage += 1;
-        }
+            $aliReviews = array_merge($aliReviews, $row);
 
+            $currPage += 1;
+            
+            sleep(0.5);
+        }
+        dump($aliReviews);
         return true;
     }
 
-    public function checkAliReviewsInstall($shopName, $accessToken){
-        $client = new ClientApi(false, "2022-01", $shopName, $accessToken);
-        $productApi = new Product($client);
+    public function checkAliReviewsInstalled($shopName){
+        $client = new Client();
         try{
-            $products = $productApi->all([
-                'limit' => 1
-            ]);
-        }catch(ShopifyApiException $e){
+            $response = $client->get("https://".$shopName.".myshopify.com/collections/all");
+        }catch(RequestException $e){
             return false;
         }
-        if(count($products) == 0) return false;
-        $product = $products[0];
-        $urlProduct = 'https://'.$shopName.'.myshopify.com/products/'.$product->handle;
-        return is_null($this->getUrlWidgetAliReviews($urlProduct))?false:true;
+        $html = (string) $response->getBody();
+        $crawler = new Crawler($html);
+
+        if(count($crawler->filter('.arv-collection')) > 0){
+            return true;
+        }
+
+        return false;
     }
 
     public function getUrlWidgetAliReviews($url){

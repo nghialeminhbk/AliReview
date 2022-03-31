@@ -15,7 +15,7 @@ class CrawAliReviewTest extends TestCase
      */
     public function testCheckAliReviewsInstall($infoShop, $expectedResult){
         $crawAliReview = new CrawAliReview();
-        $result = $crawAliReview->checkAliReviewsInstall($infoShop['shopName'], $infoShop['accessToken']);
+        $result = $crawAliReview->checkAliReviewsInstalled($infoShop['shopName'], $infoShop['accessToken']);
         $this->assertEquals($expectedResult, $result);
     }
 
@@ -41,7 +41,7 @@ class CrawAliReviewTest extends TestCase
 
     public function providerTestCrawData(){
         return [
-            // [['url' => 'https://rv-test-1.myshopify.com/products/1-piece-stainless-steel-painless-ear-clip-earrings-for-men-women-punk-silver-color-non-piercing-fake-earrings-jewelry-gifts', 'productId' => '1'], true],
+            [['url' => 'https://rv-test-1.myshopify.com/products/1-piece-stainless-steel-painless-ear-clip-earrings-for-men-women-punk-silver-color-non-piercing-fake-earrings-jewelry-gifts', 'productId' => '1'], true],
             [['url' => 'https://rv-test-1.myshopify.com/products/17km-gold-leaves-ear-cuff-black-non-piercing-ear-clips-fake-cartilage-earrings-clip-earrings-for-women-men-who', 'productId' => '1'], false],
             [['url' => 'https://rv-test-1.myshopify.com/products/abstract-v-back-cami', 'productId' => '1'], true]
         ];

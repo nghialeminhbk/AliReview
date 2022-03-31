@@ -15,11 +15,14 @@ class ReviewService
         $review->rate = $data['rate'];
         $review->author_name = $data['authorName'];
         $review->author_avt = $data['authorAvt'];
+        $review->title = $data['title'];
         $review->content = $data['content'];
         $review->img = $data['img'];
-        $review->date = $data['date'];
+        $review->created_at = $data['createdAt'];
+        $review->store_reply = $data['storeReply'];
+        $review->store_reply_created = $data['storeReplyCreated'];
         $review->number_like = $data['numberLike'];
-        $review->number_unlike = $data['numberUnlike'];
+        $review->number_dislike = $data['numberDislike'];
         $review->save();
 
         return $review->id;

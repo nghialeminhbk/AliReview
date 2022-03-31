@@ -17,11 +17,19 @@ class Review extends Model
         'rate',
         'author_name',
         'author_avt',
+        'title',
         'content',
         'img',
-        'date',
+        'created_at',
+        'store_reply',
+        'store_created_at',
         'number_like',
-        'number_unlike'
+        'number_dislike'
     ];
+
+    protected $casts = [
+        'img' => 'array'
+    ];
+
 
 }

@@ -9,11 +9,14 @@
             <th scope="col">Rate</th>
             <th scope="col">Author name</th>
             <th scope="col">Author avt</th>
+            <th scope="col">Title</th>
             <th scope="col">Content</th>
-            <th scope="col">Image</th>
-            <th scope="col">Date</th>
+            <th scope="col">Images</th>
+            <th scope="col">Created at</th>
+            <th scope="col">Store reply</th>
+            <th scope="col">Store created at</th>
             <th scope="col">Number Like</th>
-            <th scope="col">Number Unlike</th>
+            <th scope="col">Number Dislike</th>
         </tr>
     </thead>
     <tbody>
@@ -23,11 +26,18 @@
             <td>{{ $review['rate'] }}</td>
             <td>{{ $review['author_name'] }}</td>
             <td><img src="{{ $review['author_avt'] }}" alt="" width="50" height="50"></td>
+            <td>{{ $review['title'] }}</td>
             <td>{{ \Illuminate\Support\Str::limit($review['content'], 30) }}</td>
-            <td><img src="{{ $review['img'] }}" alt="No photo" width="50" height="50"></td>
-            <td>{{ $review['date'] }}</td>
+            <td>
+                <!-- @foreach($review['img'])
+                    <img src="{{ $review['img'] }}" alt="No photo" width="50" height="50">
+                @endforeach -->
+            </td>
+            <td>{{ $review['created_at'] }}</td>
+            <td>{{ $review['store_reply'] }}</td>
+            <td>{{ $review['store_created_at'] }}</td>
             <td>{{ $review['number_like'] }}</td>
-            <td>{{ $review['number_unlike'] }}</td>
+            <td>{{ $review['number_dislike'] }}</td>
         </tr>
         @endforeach
     </tbody>

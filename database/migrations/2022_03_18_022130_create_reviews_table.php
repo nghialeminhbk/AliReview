@@ -19,11 +19,14 @@ class CreateReviewsTable extends Migration
             $table->integer('rate');
             $table->string('author_name');
             $table->string('author_avt')->nullable();
-            $table->longText('content');
-            $table->string('img')->nullable();
-            $table->string('date');
-            $table->integer('number_like');
-            $table->integer('number_unlike');
+            $table->string('title')->nullale();
+            $table->longText('content')->nullable();
+            $table->json('img')->nullable();
+            $table->string('created_at');
+            $table->longText('store_reply')->nullable();
+            $table->string('store_created_at')->nullable();
+            $table->integer('number_like')->nullable();
+            $table->integer('number_dislike')->nullable();
         });
     }
 
