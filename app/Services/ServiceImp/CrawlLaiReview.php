@@ -1,6 +1,6 @@
 <?php
 namespace App\Services\ServiceImp;
-use App\Services\CrawService;
+use App\Services\CrawlService;
 use GuzzleHttp\Client;
 use Secomapp\ClientApi;
 use Secomapp\Resources\Product;
@@ -9,74 +9,60 @@ use GuzzleHttp\Exception\RequestException;
 use Secomapp\Exceptions\ShopifyApiException;
 use App\Services\ReviewService;
 
-class CrawlLaiReview implements CrawService
+class CrawlLaiReview implements CrawlService
 {
-    public function crawData($url, $productId){
-        $urlWidget = $this->getUrlWidgetLooxReviews($url);
-
-        if(is_null($urlWidget)) return false;
+    public function crawlData($urlProduct, $productIdOriginal, $productId){
+        $shopName = substr($urlProduct, 8, strpos($urlProduct, ".myshopify.com")-8);
+        $apiReviews = "https://reviews.smartifyapps.com/api/load-more?productShopifyId=".$productIdOriginal."&shopName=".$shopName."&reviewPerPage=10&sortValue=date&rate=null&page=";
 
         $client = new Client();
-        $urlWidgetPagination = $urlWidget.'?page=';
         $currentPage = 1;
-        $yotpoReviews = [];
+        $laiReviews = [];
         while(1){
-            $response = $client->get($urlWidgetPagination.$currentPage);
-            $html = (string) $response->getBody();
-            $crawler = new Crawler($html);
-            $rows = $crawler->filter('.grid-item-wrap')->each(function( Crawler $node){
-                return [
-                    'image_review' => count($node->filter('.item-img > img'))>0?$node->filter('.item-img > img')->attr('src'):null,
-                    'author' => $node->filter('.title')->text(),
-                    'datetime' => $node->filter('.time')->text(),
-                    'rate' => substr($node->filter('.stars')->attr('aria-label'), 0, 1),
-                    'content' => $node->filter('.main-text')->text()
-                ];
-            });
+            $response = $client->get($apiReviews.$currentPage);
+            $data = json_decode(base64_decode(json_decode((string) $response->getBody())->blockReviews));
 
-            if(count($rows) == 0) break;
+            if(count($data) == 0) break;
 
-            $yotpoReviews = array_merge($yotpoReviews, $rows);
+            foreach($data as $review){
+                // save review to db
+                $temp['rate'] = $review->rating;
+                $temp['authorName'] = $review->author;
+                $temp['authorAvt'] = null;
+                $temp['content'] = $review->review;
+                $temp['title'] = null;
+                $temp['img'] = count($review->photosArray) > 0?$review->photosArray:null;
+                $temp['createdAt'] = $review->date;
+                $temp['storeReply'] = property_exists($review, 'reply')?array_map(function($item){
+                    return $item->content;
+                }, $review->reply):null;
+                $temp['storeReplyCreated'] = property_exists($review, 'reply')?array_map(function($item){
+                    return $item->created_at;
+                }, $review->reply):null;
+                $temp['numberLike'] = $review->likes??0;
+                $temp['numberDislike'] = $review->dislikes??0;
+
+                array_push($laiReviews, $temp);
+            }
 
             $currentPage++;
 
+            sleep(0.5);
         }
-        dump($yotpoReviews);
-        return true;
+        dump($laiReviews);
+        return count($laiReviews);
     }
 
-    public function getUrlWidgetLaiReviews($url){
+    public function checkAppInstalled($urlProductDefault){
         $client = new Client();
         try{
-            $response = $client->get($url);
+            $response = $client->get($urlProductDefault); 
         }catch(RequestException $e){
-            return null;
+            return false;
         }
-        
-        $htmlString = strip_tags($response->getBody(), ["<script>", "<div>"]);
-
-        // crawler
-        $crawler = new Crawler($htmlString);
-        try{
-            $stringTemp = $crawler->filter("script")->last()->attr('src');
-            $index = strrpos($stringTemp, '/');
-            $preSrc = substr($stringTemp, 0, $index + 1);
-            $productId = $crawler->filter('#looxReviews')->attr('data-product-id');
-            $src = $preSrc."reviews/".$productId;
-        }catch(\InvalidArgumentException $e){
-            return null;
-        }
-        
-        return $src;
-    } 
-
-    public function checkStoreInstalledLaiReview($shopName){
-        $client = new Client();
-        $response = $client->get("https://".$shopName.".myshopify.com/collections/all");
-        $html = (string) $response->getBody();
-        $crawler = new Crawler($html);
-
-        if(count($crawler->filter('.lai-reviewPop')) > 0){
+        $string = (string) $response->getBody();
+       
+        if(strpos($string, "https://reviews.smartifyapps.com/api/load-more")){
             return true;
         }
 

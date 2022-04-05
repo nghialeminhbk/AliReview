@@ -1,6 +1,6 @@
 <?php
 namespace App\Services\ServiceImp;
-use App\Services\CrawService;
+use App\Services\CrawlService;
 use GuzzleHttp\Client;
 use Secomapp\ClientApi;
 use Secomapp\Resources\Product;
@@ -9,12 +9,11 @@ use GuzzleHttp\Exception\RequestException;
 use Secomapp\Exceptions\ShopifyApiException;
 use App\Services\ReviewService;
 
-class CrawlRyviuReview implements CrawService
+class CrawlRyviuReview implements CrawlService
 {
-    public function crawData($url, $productId){
-        $shopDomain = substr($url, 8, strpos($url, '/products')-8);
+    public function crawlData($urlProduct, $productIdOriginal, $productId){
+        $shopDomain = substr($urlProduct, 8, strpos($urlProduct, '/products')-8);
         $apiGetReviews = "https://app.ryviu.io/frontend/client/get-more-reviews?domain=".$shopDomain;
-        $productId = $this->getProductIdOnStoreInstalledRyviu($url);
         $currentPage = 1;
         $ryviuReviews = [];
         
@@ -24,7 +23,7 @@ class CrawlRyviuReview implements CrawService
             $header = [
                 'headers' => ['Content-Type' => 'application/json'],
                 'body' => json_encode([
-                    "product_id" => $productId,
+                    "product_id" => $productIdOriginal,
                     "page" => $currentPage,
                     "domain" => $shopDomain,
                     "platform" => "shopify"
@@ -59,25 +58,16 @@ class CrawlRyviuReview implements CrawService
         return count($ryviuReviews);
     }
 
-    public function getProductIdOnStoreInstalledRyviu($urlProduct){
+    public function checkAppInstalled($urlProductDefault){
         $client = new Client();
-        $response = $client->get($urlProduct);
-        $html = (string) $response->getBody();
-
-        $crawler = new Crawler($html);
-        $productId = $crawler->filter('ryviu-widget-total')->attr('product_id');
-        return $productId;
-    }
-
-    public function checkStoreInstalledRyviuReview($shopName){
-        $client = new Client();
-        $response = $client->get("https://".$shopName.".myshopify.com/collections/all");
-        $html = (string) $response->getBody();
-        $crawler = new Crawler($html);
-
-        if(count($crawler->filter('ryviu-widget-total')) > 0){
-            return true;
+        try{
+            $response = $client->get($urlProductDefault);
+        }catch(RequestException $e){
+            return false;
         }
+        $string = (string) $response->getBody();
+
+       if(strpos($string, "cdn.ryviu.com")) return true;
 
         return false;
     }

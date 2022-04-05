@@ -1,6 +1,6 @@
 <?php
 namespace App\Services\ServiceImp;
-use App\Services\CrawService;
+use App\Services\CrawlService;
 use GuzzleHttp\Client;
 use Secomapp\ClientApi;
 use Secomapp\Resources\Product;
@@ -9,10 +9,10 @@ use GuzzleHttp\Exception\RequestException;
 use Secomapp\Exceptions\ShopifyApiException;
 use App\Services\ReviewService;
 
-class CrawlFeraReview implements CrawService
+class CrawlFeraReview implements CrawlService
 {
-    public function crawData($url, $productId){
-        $urlWidget = $this->getUrlWidgetFeraReviews($url);
+    public function crawlData($urlProduct, $productIdOriginal, $productId){
+        $urlWidget = $this->getUrlWidgetFeraReviews($urlProduct, $productIdOriginal);
         
         if(is_null($urlWidget)) return false;
         
@@ -47,10 +47,10 @@ class CrawlFeraReview implements CrawService
         return count($feraReviews);
     }
 
-    public function getUrlWidgetFeraReviews($url){
+    public function getUrlWidgetFeraReviews($urlProduct, $productIdOriginal){
         $client = new Client();
         try{
-            $response = $client->get($url);
+            $response = $client->get($urlProduct);
         }catch(RequestException $e){
             return null;
         }
@@ -59,7 +59,7 @@ class CrawlFeraReview implements CrawService
         // crawler
         $crawler = new Crawler($html);
         try{
-            // $string = $crawler->filter('script')->last()->text();
+            $string = $crawler->filter('script')->last()->text();
             $handleString = function($string){
                 $array = explode("\"", $string);
                 return $array[strpos($string, "\"")+1];
@@ -71,36 +71,27 @@ class CrawlFeraReview implements CrawService
                     break;
                 }
             }
-            foreach($array as $i => $item){
-                if($item == "product_id:"){
-                    $productId = $handleString($array[$i+1]);
-                    break;
-                }
-            }
-            $productId = "4820800241708";
             $storePk = "pk_63aba574a2017d3ddbfa0e0d592e8c8e637174d531e87bdbd0667ceaaf618c53";
         }catch(\InvalidArgumentException $e){
             return null;
         }
 
-        return "https://api2.fera.ai/public/reviews.json?limit=5&sort_by=highest_quality&product_id=".$productId."&public_key=".$storePk."&admin=true&api_client=fera.js-2.6.4.&page=";
+        return "https://api2.fera.ai/public/reviews.json?limit=5&sort_by=highest_quality&product_id=".$productIdOriginal."&public_key=".$storePk."&admin=true&api_client=fera.js-2.6.4.&page=";
 
     }
 
-    public function checkStoreInstalledFeraReview($shopName){
+    public function checkAppInstalled($urlProductDefault){
         $client = new Client();
-        $response = $client->get("https://".$shopName.".myshopify.com/collections/all");
-        $html = (string) $response->getBody();
-        $crawler = new Crawler($html);
-
-
         try{
-            if(strpos($crawler->filter('script')->last()->text(), "fera") >= 0){
-                return true;
-            }
-        }catch(\InvalidArgumentException $e){
+            $response = $client->get($urlProductDefault);
+        }catch(RequestException $e){
             return false;
+        }
+        $string = (string) $response->getBody();
+        if(strpos($string, "https://cdn.fera.ai/js/fera.js?shop=")){
+            return true;
         }
         return false;
     }
+
 }

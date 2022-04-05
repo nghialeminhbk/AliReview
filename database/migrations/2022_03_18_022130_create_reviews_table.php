@@ -23,8 +23,8 @@ class CreateReviewsTable extends Migration
             $table->longText('content')->nullable();
             $table->json('img')->nullable();
             $table->string('created_at');
-            $table->longText('store_reply')->nullable();
-            $table->string('store_created_at')->nullable();
+            $table->json('store_reply')->nullable();
+            $table->json('store_reply_created_at')->nullable();
             $table->integer('number_like')->nullable();
             $table->integer('number_dislike')->nullable();
         });

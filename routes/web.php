@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\CrawController;
+use App\Http\Controllers\CrawlController;
 use App\Http\Controllers\ResourceController;
 /*
 |--------------------------------------------------------------------------
@@ -14,9 +14,9 @@ use App\Http\Controllers\ResourceController;
 |
 */
 
-Route::get('/', [CrawController::class, 'index'])->name('home');
+Route::get('/', [CrawlController::class, 'index'])->name('home');
 
-Route::post('/craw', [CrawController::class, 'craw'])->name('craw');
+Route::post('/craw', [CrawlController::class, 'crawl'])->name('craw');
 
 Route::get('/listApps', [ResourceController::class, 'displayListApps'])->name('apps.list');
 
@@ -24,4 +24,4 @@ Route::get('/listProducts/{appId}', [ResourceController::class, 'displayListProd
 
 Route::get('/listReviews/{productId}', [ResourceController::class, 'displayListReviews'])->name('reviews.list');
 
-Route::get('/test', [CrawController::class, 'test'])->name('test');
+Route::get('/test', [CrawlController::class, 'test'])->name('test');

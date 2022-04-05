@@ -3,7 +3,7 @@
 namespace Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
-use App\Services\ServiceImp\CrawAliReview;
+use App\Services\ServiceImp\CrawlAliReview;
 
 class CrawAliReviewTest extends TestCase
 {
@@ -14,8 +14,8 @@ class CrawAliReviewTest extends TestCase
      * @dataProvider providerTestCheckAliReviewsInstall
      */
     public function testCheckAliReviewsInstall($infoShop, $expectedResult){
-        $crawAliReview = new CrawAliReview();
-        $result = $crawAliReview->checkAliReviewsInstalled($infoShop['shopName'], $infoShop['accessToken']);
+        $crawlAliReview = new CrawlAliReview();
+        $result = $crawlAliReview->checkAliReviewsInstalled($infoShop['shopName'], $infoShop['accessToken']);
         $this->assertEquals($expectedResult, $result);
     }
 

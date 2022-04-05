@@ -1,6 +1,6 @@
 <?php
 namespace App\Services\ServiceImp;
-use App\Services\CrawService;
+use App\Services\CrawlService;
 use GuzzleHttp\Client;
 use Secomapp\ClientApi;
 use Secomapp\Resources\Product;
@@ -9,12 +9,12 @@ use GuzzleHttp\Exception\RequestException;
 use Secomapp\Exceptions\ShopifyApiException;
 use App\Services\ReviewService;
 
-class CrawAliReview implements CrawService{
+class CrawlAliReview implements CrawlService{
     protected ReviewService $reviewService;
 
-    public function crawData($url, $productId){
+    public function crawlData($urlProduct, $productIdOriginal, $productId){
         $this->reviewService = new ReviewService();
-        $src = $this->getUrlWidgetAliReviews($url);
+        $src = $this->getUrlWidgetAliReviews($urlProduct);
         
         if(is_null($src)) return false;
 
@@ -73,31 +73,14 @@ class CrawAliReview implements CrawService{
             
             sleep(0.5);
         }
-        dump($aliReviews);
+        // dump($aliReviews);
         return true;
     }
 
-    public function checkAliReviewsInstalled($shopName){
+    public function getUrlWidgetAliReviews($urlProduct){
         $client = new Client();
         try{
-            $response = $client->get("https://".$shopName.".myshopify.com/collections/all");
-        }catch(RequestException $e){
-            return false;
-        }
-        $html = (string) $response->getBody();
-        $crawler = new Crawler($html);
-
-        if(count($crawler->filter('.arv-collection')) > 0){
-            return true;
-        }
-
-        return false;
-    }
-
-    public function getUrlWidgetAliReviews($url){
-        $client = new Client();
-        try{
-            $response = $client->get($url);
+            $response = $client->get($urlProduct);
         }catch(RequestException $e){
             return null;
         }
@@ -115,6 +98,23 @@ class CrawAliReview implements CrawService{
         }
         
         return $src;
+    }
+
+    public function checkAppInstalled($urlProductDefault){
+        $client = new Client();
+        try{
+            $response = $client->get($urlProductDefault);
+        }catch(RequestException $e){
+            return false;
+        }
+        $html = strip_tags((string) $response->getBody(), ["<iframe>"]);
+        $crawler = new Crawler($html);
+
+        if(count($crawler->filter('.aliReviewsFrame')) > 0){
+            return true;
+        }
+
+        return false;
     }
 
 }

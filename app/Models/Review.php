@@ -28,7 +28,9 @@ class Review extends Model
     ];
 
     protected $casts = [
-        'img' => 'array'
+        'img' => 'array',
+        'store_reply' => 'array',
+        'store_reply_created_at' => 'array'
     ];
 
 

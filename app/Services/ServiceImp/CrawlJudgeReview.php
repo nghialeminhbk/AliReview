@@ -1,6 +1,6 @@
 <?php
 namespace App\Services\ServiceImp;
-use App\Services\CrawService;
+use App\Services\CrawlService;
 use GuzzleHttp\Client;
 use Secomapp\ClientApi;
 use Secomapp\Resources\Product;
@@ -9,10 +9,10 @@ use GuzzleHttp\Exception\RequestException;
 use Secomapp\Exceptions\ShopifyApiException;
 use App\Services\ReviewService;
 
-class CrawlJudgeReview implements CrawService
+class CrawlJudgeReview implements CrawlService
 {
-    public function crawData($url, $productId){
-        $urlWidget = $this->getUrlWidgetJudgeReviews($url);
+    public function crawlData($urlProduct, $productIdOriginal, $productId){
+        $urlWidget = $this->getUrlWidgetJudgeReviews($urlProduct);
 
         if(is_null($urlWidget)) return false;
 
@@ -44,9 +44,9 @@ class CrawlJudgeReview implements CrawService
 
             if(count($row) == 0) break;
 
-            foreach($row as$review){
-
-            }
+            // foreach($row as$review){
+                // save to db
+            // }
 
             $judgeReviews = array_merge($judgeReviews, $row);
 
@@ -78,17 +78,16 @@ class CrawlJudgeReview implements CrawService
 
     }
 
-    public function checkStoreInstalledJudgeReview($shopName){
+    public function checkAppInstalled($urlProductDefault){
         $client = new Client();
         try{
-            $response = $client->get("https://".$shopName.".myshopify.com/collections/all");
+            $response = $client->get($urlProductDefault); 
         }catch(RequestException $e){
             return false;
         }
-        $html = (string) $response->getBody();
-        $crawler = new Crawler($html);
+        $string = (string) $response->getBody();
 
-        if(count($crawler->filter('.jdgm-widget')) > 0){
+        if(strpos($string, "cdn.judge.me\/assets")){
             return true;
         }
 

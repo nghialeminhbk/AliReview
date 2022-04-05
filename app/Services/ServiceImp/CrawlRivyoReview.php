@@ -1,6 +1,6 @@
 <?php
 namespace App\Services\ServiceImp;
-use App\Services\CrawService;
+use App\Services\CrawlService;
 use GuzzleHttp\Client;
 use Secomapp\ClientApi;
 use Secomapp\Resources\Product;
@@ -9,14 +9,13 @@ use GuzzleHttp\Exception\RequestException;
 use Secomapp\Exceptions\ShopifyApiException;
 use App\Services\ReviewService;
 
-class CrawlRivyoReview implements CrawService
+class CrawlRivyoReview implements CrawlService
 {
-    public function crawData($url, $productId){
-        $shopDomain = substr($url, 8, strpos($url, '/products')-8);;
-        $productHandle = substr($url, strrpos($url, '/') + 1, strlen($url) - strrpos($url, '/'));
-        $productId = $this->getProductIdOnStoreInstalledRivyo($url);
+    public function crawlData($urlProduct, $productIdOriginal, $productId){
+        $shopDomain = substr($urlProduct, 8, strpos($urlProduct, '/products')-8);;
+        $productHandle = substr($urlProduct, strrpos($urlProduct, '/') + 1, strlen($urlProduct) - strrpos($urlProduct, '/'));
         $limit = 0;
-        $apiGetProductRivyo = "https://thimatic-apps.com/product_review/get_product_review_filter.php?shop=".$shopDomain."&product_handle=".$productHandle."&product_id=".$productId."&limit="; 
+        $apiGetProductRivyo = "https://thimatic-apps.com/product_review/get_product_review_filter.php?shop=".$shopDomain."&product_handle=".$productHandle."&product_id=".$productIdOriginal."&limit="; 
         $rivyoReviews = [];
         $client = new Client();
 
@@ -53,27 +52,16 @@ class CrawlRivyoReview implements CrawService
         return count($rivyoReviews);
     }
 
-    public function getProductIdOnStoreInstalledRivyo($urlProduct){
-        $client = new CLient();
-        $response = $client->get($urlProduct);
-        $html = (string) $response->getBody(); 
-        
-        $crawler = new Crawler($html);
-        try{
-            $productId = $crawler->filter('#wc_review_section')->attr('data-product_id');
-        }catch(\InvalidArgumentException $e){
-            return null;
-        }
-        return $productId;
-    }
-
-    public function checkStoreInstalledRivyoReview($shopName){
+    public function checkAppInstalled($urlProductDefault){
         $client = new Client();
-        $response = $client->get("https://".$shopName.".myshopify.com/collections/all");
-        $html = (string) $response->getBody();
-        $crawler = new Crawler($html);
+        try{
+            $response = $client->get($urlProductDefault);
+        }catch(RequestException $e){
+            return false;
+        }
+        $string = (string) $response->getBody();
 
-        if(count($crawler->filter('.wc_product_review_badge')) > 0){
+        if(strpos($string, "thimatic-apps.com\/product_review")){
             return true;
         }
 

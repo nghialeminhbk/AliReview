@@ -1,6 +1,6 @@
 <?php
 namespace App\Services\ServiceImp;
-use App\Services\CrawService;
+use App\Services\CrawlService;
 use GuzzleHttp\Client;
 use Secomapp\ClientApi;
 use Secomapp\Resources\Product;
@@ -9,12 +9,10 @@ use GuzzleHttp\Exception\RequestException;
 use Secomapp\Exceptions\ShopifyApiException;
 use App\Services\ReviewService;
 
-class CrawlStampedReview implements CrawService
+class CrawlStampedReview implements CrawlService
 {
-    public function crawData($url, $productId){
-        $productId = $this->getProductIdOnStoreInstalledStamped($url);
-
-        $apiGetProductStamped = "https://stamped.io/api/widget?productId=".$productId."&apiKey=pubkey-Jzw3z4oU8ka8458Hzs08j14V4NxmvR&sId=250430&take=5&sort=featured&widgetLanguage=en&page=";
+    public function crawlData($urlProduct, $productIdOriginal, $productId){
+        $apiGetProductStamped = "https://stamped.io/api/widget?productId=".$productIdOriginal."&apiKey=pubkey-Jzw3z4oU8ka8458Hzs08j14V4NxmvR&sId=250430&take=5&sort=featured&widgetLanguage=en&page=";
 
         $client = new Client();
         $currentPage = 1;
@@ -59,34 +57,19 @@ class CrawlStampedReview implements CrawService
 
             sleep(0.5);
         }
-        dump($stampedReviews);
+        // dump($stampedReviews);
         return count($stampedReviews);
     }
 
-    public function getProductIdOnStoreInstalledStamped($urlProduct){
-        $client = new CLient();
-        $response = $client->get($urlProduct);
-        $html = strip_tags((string) $response->getBody(), ["<div>"]); // dang bug o day
-        
-        $crawler = new Crawler($html);
-        try{
-            $productId = $crawler->filter('.stamped-main-widget')->attr('data-product-id');
-        }catch(\InvalidArgumentException $e){
-            return null;
-        }
-        return $productId;
-
-    } 
-
-    public function checkStoreInstalledStampedReview($shopName){
+    public function checkAppInstalled($urlProductDefault){
         $client = new Client();
-        $response = $client->get("https://".$shopName.".myshopify.com/collections/all");
-        $html = (string) $response->getBody();
-        $crawler = new Crawler($html);
-
-        if(count($crawler->filter('.stamped')) > 0){
-            return true;
+        try{
+            $response = $client->get($urlProductDefault);
+        }catch(RequestException $e){
+            return false;
         }
+        $string = (string) $response->getBody();
+        if(strpos($string, "stamped.io")) return true;
 
         return false;
     }

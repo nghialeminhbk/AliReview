@@ -1,6 +1,6 @@
 <?php
 namespace App\Services\ServiceImp;
-use App\Services\CrawService;
+use App\Services\CrawlService;
 use GuzzleHttp\Client;
 use Secomapp\ClientApi;
 use Secomapp\Resources\Product;
@@ -9,10 +9,10 @@ use GuzzleHttp\Exception\RequestException;
 use Secomapp\Exceptions\ShopifyApiException;
 use App\Services\ReviewService;
 
-class CrawlLooxReview implements CrawService
+class CrawlLooxReview implements CrawlService
 {
-    public function crawData($url, $productId){
-        $urlWidget = $this->getUrlWidgetLooxReviews($url);
+    public function crawlData($urlProduct, $productIdOriginal, $productId){
+        $urlWidget = $this->getUrlWidgetLooxReviews($urlProduct, $productIdOriginal);
 
         if(is_null($urlWidget)) return false;
 
@@ -36,7 +36,6 @@ class CrawlLooxReview implements CrawService
                     'storeReplyCreated' => null,
                     'numberLike' => null,
                     'numberDislike' => null,
-                    
                 ];
             });
 
@@ -55,7 +54,7 @@ class CrawlLooxReview implements CrawService
         return count($looxReviews);
     }
 
-    public function getUrlWidgetLooxReviews($url){
+    public function getUrlWidgetLooxReviews($urlProduct, $productIdOriginal){
         $client = new Client();
         try{
             $response = $client->get($url);
@@ -71,34 +70,24 @@ class CrawlLooxReview implements CrawService
             $stringTemp = $crawler->filter("script")->last()->attr('src');
             $index = strrpos($stringTemp, '/');
             $preSrc = substr($stringTemp, 0, $index + 1);
-            $productId = $crawler->filter('#looxReviews')->attr('data-product-id');
-            $src = $preSrc."reviews/".$productId;
-        }catch(InvalidArgumentException $e){
+            $src = $preSrc."reviews/".$productIdOriginal;
+        }catch(\InvalidArgumentException $e){
             return null;
         }
         
         return $src;
     } 
 
-    public function checkStoreInstalledLooxReview($shopName){
+    public function checkAppInstalled($urlProductDefault){
         $client = new Client();
         try{
-            $response = $client->get("https://".$shopName.".myshopify.com/collections/all");
+            $response = $client->get($urlProductDefault);
         }catch(RequestException $e){
             return false;
         }
-        $html = (string) $response->getBody();
-        $crawler = new Crawler($html);
+        $string = (string) $response->getBody();
 
-        try{
-            $crawler->filter('script')->last()->attr('src');
-        }catch(\InvalidArgumentException $e){
-            return false;
-        }
-
-        if(strpos($crawler->filter('script')->last()->attr('src'), "loox.io/widget") > 0){
-            return true;
-        }
+        if(strpos($string, "loox.io/widget")) return true;
 
         return false;
     }

@@ -4,47 +4,47 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Secomapp\ClientApi;
+use GuzzleHttp\Client;
+use Symfony\Component\DomCrawler\Crawler;
 use Secomapp\Resources\Product;
-use App\Services\CrawService;
+use App\Services\CrawlService;
 use App\Services\AppService;
 use App\Services\ProductService;
 use App\Services\ReviewService;
 use Secomapp\Exceptions\ShopifyApiException;
-use App\Services\ServiceImp\CrawAliReview;
+use App\Services\ServiceImp\CrawlAliReview;
 use App\Services\ServiceImp\CrawlLooxReview;
 use App\Services\ServiceImp\CrawlJudgeReview;
 use App\Services\ServiceImp\CrawlFeraReview;
 use App\Services\ServiceImp\CrawlRyviuReview;
 use App\Services\ServiceImp\CrawlStampedReview;
 use App\Services\ServiceImp\CrawlRivyoReview;
+use App\Services\ServiceImp\CrawlLaiReview;
 
-class CrawController extends Controller
+class CrawlController extends Controller
 {
-    protected CrawService $crawService;
+    protected CrawlService $crawlService;
     protected AppService $appService;
     protected ProductService $productService;
     protected ReviewService $reviewService;
 
-    // public function __construct(AppService $appService, ProductService $productService, ReviewService $reviewService){
-    //     $this->appService = $appService;
-    //     $this->productService = $productService;
-    //     $this->reviewService = $reviewService;
-    // }
+    public function __construct(AppService $appService, ProductService $productService, ReviewService $reviewService){
+        $this->appService = $appService;
+        $this->productService = $productService;
+        $this->reviewService = $reviewService;
+    }
 
     public function index(){
         return view('index');
     }
 
-    public function craw(Request $request){
+    public function crawl(Request $request){
         ini_set('max_execution_time', 1800);
-        $this->appService = new AppService();
-        $this->productService = new ProductService();
-        $this->reviewService = new ReviewService();
-
+        
         $shopName = $request->shopName;
         $accessToken = $request->accessToken;  
 
-        $this->crawService = new CrawAliReview(); 
+        $this->crawlService = new CrawlAliReview(); 
         if(!$this->checkValidToken($shopName, $accessToken)){
             return response()->json([
                 'type' => 'error',
@@ -52,7 +52,7 @@ class CrawController extends Controller
             ]);
         }
 
-        if(!$this->crawService->checkAliReviewsInstalled($shopName, $accessToken)){
+        if(!$this->crawlService->checkAliReviewsInstalled($shopName, $accessToken)){
             return response()->json([
                 'type' => 'error',
                 'message' => 'Shop dont install AliReviews App or Shop has no products!'
@@ -95,7 +95,7 @@ class CrawController extends Controller
                 ]);
 
                 $urlProduct = 'https://'.$shopName.'.myshopify.com/products/'.$product->handle;
-                $this->crawService->crawData($urlProduct, $productId);
+                $this->crawlService->crawlData($urlProduct, $productId);
             }
 
             sleep(0.5);
@@ -123,29 +123,11 @@ class CrawController extends Controller
     }
 
     public function test(){
-        $crawlFeraReview = new CrawlFeraReview();
-        // $crawlStampedReview->crawData("https://rv-test-1.myshopify.com/products/1-pcs-medical-stainless-steel-crystal-zircon-ear-studs-earrings-for-women-men-4-prong-tragus-cartilage-piercing-jewelry", 0); return;
+        $this->crawlService = new CrawlLaiReview();
+        // dump($this->crawlService->crawlData("https://smartify-reviews-app-demo.myshopify.com/products/sample-product", "6868040188112", 0)); return;
 
-        // dump($crawlRivyoReview->crawData("https://thimatic-product-review.myshopify.com/products/red-t-shirt", 1)); return;
-        // // dump($crawlRivyoReview->getProductIdOnStoreInstalledRivyo("https://thimatic-product-review.myshopify.com/products/red-t-shirt")); return;     
-        // $handleString = function($string){
-        //     $array = explode("\"", $string);
-        //     return $array[strpos($string, "\"")+1];
-        // };
-        // $array = explode(" ",$string);
-        // foreach($array as $i => $item){
-        //     if($item == "store_pk:"){
-        //         $storePk = $handleString($array[$i+1]);
-        //         break;
-        //     }
-        // }
-        // foreach($array as $i => $item){
-        //     if($item == "product_id:"){
-        //         $productId = $handleString($array[$i+1]);
-        //         break;
-        //     }
-        // }
-        // dump($array, $storePk, $productId); return;
-        dump($crawlFeraReview->getUrlWidgetFeraReviews("https://rv-test-1.myshopify.com/products/abstract-v-back-cami?fera_admin=1")); return;
+        // dump($this->crawlService->checkAppInstalled("https://rv-test-1.myshopify.com/products/1-pcs-medical-stainless-steel-crystal-zircon-ear-studs-earrings-for-women-men-4-prong-tragus-cartilage-piercing-jewelry")); return;
+
+        dump($this->appService->getInstalledApps('rv-test-1', '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'));
     }
 }

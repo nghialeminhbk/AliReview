@@ -1,6 +1,6 @@
 <?php
 namespace App\Services\ServiceImp;
-use App\Services\CrawService;
+use App\Services\CrawlService;
 use GuzzleHttp\Client;
 use Secomapp\ClientApi;
 use Secomapp\Resources\Product;
@@ -9,44 +9,67 @@ use GuzzleHttp\Exception\RequestException;
 use Secomapp\Exceptions\ShopifyApiException;
 use App\Services\ReviewService;
 
-class CrawlYotpoReview implements CrawService
+class CrawlYotpoReview implements CrawlService
 {
-    public function crawData($url, $productId){
-        $urlWidget = $this->getUrlWidgetLooxReviews($url);
+    public function crawlData($urlProduct,$productIdOriginal, $productId){
+        $apiWidget = $this->apiYoptoWidgetReview($urlProduct);
 
-        if(is_null($urlWidget)) return false;
+        if(is_null($apiWidget)) return false;
 
-        $client = new Client();
-        $urlWidgetPagination = $urlWidget.'?page=';
         $currentPage = 1;
         $yotpoReviews = [];
         while(1){
-            $response = $client->get($urlWidgetPagination.$currentPage);
-            $html = (string) $response->getBody();
+            $param = [
+                'methods' => json_encode([
+                    [
+                        "method" => "reviews",
+                        "params" => [
+                            "pid" => $productIdOriginal,
+                            "order_metadata_fields" => [],
+                            "widget_product_id" => $productIdOriginal,
+                            "data_source" => "default",
+                            "page" => $currentPage,
+                            "host-widget" => "main_widget"]
+                        ]])
+            ];
+            $response = $client->get($apiWidget, [
+                'query' => $param
+            ]);
+            $html = json_decode((string) $response->getBody())->result;
             $crawler = new Crawler($html);
-            $rows = $crawler->filter('.grid-item-wrap')->each(function( Crawler $node){
-                return [
-                    'img' => count($node->filter('.item-img > img'))>0?$node->filter('.item-img > img')->attr('src'):null,
-                    'authorName' => $node->filter('.title')->text(),
-                    'createdAt' => $node->filter('.time')->text(),
-                    'rate' => substr($node->filter('.stars')->attr('aria-label'), 0, 1),
-                    'title' => $node->filter('.yotpo-review-title')->text(),
-                    'content' => $node->filter('.main-text')->text(),
-                ];
+            $row = $crawler
+            ->filter('.yotpo-review')
+            ->reduce(function(Crawler $node){
+                return ($node->attr('data-review-id') > 0);
+            })
+            ->each(function( Crawler $node){
+                    return [
+                        'img' => null,
+                        'authorName' => $node->filter('.yotpo-user-name')->text(),
+                        'authorAvt' => null,
+                        'createdAt' => $node->filter('.yotpo-header .yotpo-review-date')->text(),
+                        'rate' => count($node->filter('.yotpo-icon-star')),
+                        'title' => $node->filter('.yotpo-main .content-title')->text(),
+                        'content' => $node->filter('.yotpo-main .yotpo-review-wrapper .content-review')->text(),
+                        'storeReply' => count($node->filter('.yotpo-comments-box'))>0?$node->filter('.yotpo-comments-box .yotpo-main .content-review')->text():null,
+                        'storeReplyCreated' => count($node->filter('.yotpo-comments-box'))>0?$node->filter('.yotpo-comments-box .yotpo-header .yotpo-review-date')->text():null,
+                        'numberLike' => $node->filter('.vote-sum')->first()->text(),
+                        'numberDislike' => $node->filter('.vote-sum')->last()->text()
+                    ];
             });
 
-            if(count($rows) == 0) break;
+            if(count($row) == 0) break;
 
-            $yotpoReviews = array_merge($yotpoReviews, $rows);
+            $yotpoReviews = array_merge($yotpoReviews, $row);
 
             $currentPage++;
 
         }
-        dump($yotpoReviews);
+        // dump($yotpoReviews);
         return true;
     }
 
-    public function getUrlWidgetYoptoReviews($url){
+    public function apiYoptoWidgetReview($url){
         $client = new Client();
         try{
             $response = $client->get($url);
@@ -54,30 +77,37 @@ class CrawlYotpoReview implements CrawService
             return null;
         }
         
-        $htmlString = strip_tags($response->getBody(), ["<script>", "<div>"]);
+        $htmlString = (string) $response->getBody();
 
         // crawler
         $crawler = new Crawler($htmlString);
         try{
-            $stringTemp = $crawler->filter("script")->last()->attr('src');
-            $index = strrpos($stringTemp, '/');
-            $preSrc = substr($stringTemp, 0, $index + 1);
-            $productId = $crawler->filter('#looxReviews')->attr('data-product-id');
-            $src = $preSrc."reviews/".$productId;
+            $appKey = "";
+            $string = $crawler->filter('#shopify-block-7570552984445421165')->first()->text();
+            $array = explode("/", $string);
+            foreach($array as $i => $item){
+                if($item == "staticw2.yotpo.com"){
+                    $appKey = $array[$i+1];
+                    break;
+                }
+            }
         }catch(\InvalidArgumentException $e){
             return null;
         }
         
-        return $src;
+        return "https://staticw2.yotpo.com/batch/app_key/".$appKey."/yotpo_site_reviews";
     } 
 
-    public function checkStoreInstalledYotpoReview($shopName){
+    public function checkAppInstalled($urlProductDefault){
         $client = new Client();
-        $response = $client->get("https://".$shopName.".myshopify.com/collections/all");
-        $html = (string) $response->getBody();
-        $crawler = new Crawler($html);
+        try{
+            $response = $client->get($urlProductDefault);
+        }catch(RequestException $e){
+            return false;
+        }
+        $string = (string) $response->getBody();
 
-        if(count($crawler->filter('.yotpo')) > 0){
+        if(strpos($string, "staticw2.yotpo.com")){
             return true;
         }
 
