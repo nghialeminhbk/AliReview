@@ -6,7 +6,8 @@ use GuzzleHttp\Exception\GuzzleException;
 
 class CrawlFeraReview implements CrawlService
 {
-    public function crawlData($urlProduct, $originalProductId, $productId){
+    public function crawlData($urlProduct, $originalProductId, $productId): bool
+    {
         $urlWidget = $this->getUrlWidgetFeraReviews($urlProduct, $originalProductId);
 
         if(is_null($urlWidget)) return false;

@@ -9,7 +9,8 @@ use Symfony\Component\DomCrawler\Crawler;
 
 class CrawlLooxReview implements CrawlService
 {
-    public function crawlData($urlProduct, $originalProductId, $productId){
+    public function crawlData($urlProduct, $originalProductId, $productId): bool
+    {
         $urlWidget = $this->getUrlWidgetLooxReviews($urlProduct, $originalProductId);
 
         if(is_null($urlWidget)) return false;

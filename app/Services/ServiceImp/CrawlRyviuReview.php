@@ -8,7 +8,8 @@ use GuzzleHttp\Exception\GuzzleException;
 
 class CrawlRyviuReview implements CrawlService
 {
-    public function crawlData($urlProduct, $originalProductId, $productId){
+    public function crawlData($urlProduct, $originalProductId, $productId): bool
+    {
         $shopDomain = substr($urlProduct, 8, strpos($urlProduct, '/products')-8);
         $apiGetReviews = "https://app.ryviu.io/frontend/client/get-more-reviews?domain=".$shopDomain;
         $currentPage = 1;

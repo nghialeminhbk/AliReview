@@ -8,7 +8,8 @@ use Symfony\Component\DomCrawler\Crawler;
 
 class CrawlRivyoReview implements CrawlService
 {
-    public function crawlData($urlProduct, $originalProductId, $productId){
+    public function crawlData($urlProduct, $originalProductId, $productId): bool
+    {
         $shopDomain = substr($urlProduct, 8, strpos($urlProduct, '/products')-8);
         $productHandle = substr($urlProduct, strrpos($urlProduct, '/') + 1, strlen($urlProduct) - strrpos($urlProduct, '/'));
         $limit = 0;

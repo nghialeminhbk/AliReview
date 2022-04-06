@@ -9,7 +9,8 @@ use Symfony\Component\DomCrawler\Crawler;
 
 class CrawlJudgeReview implements CrawlService
 {
-    public function crawlData($urlProduct, $originalProductId, $productId){
+    public function crawlData($urlProduct, $originalProductId, $productId): bool
+    {
         $urlWidget = $this->getUrlWidgetJudgeReviews($urlProduct);
 
         if(is_null($urlWidget)) return false;

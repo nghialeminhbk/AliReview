@@ -6,7 +6,8 @@ use GuzzleHttp\Exception\GuzzleException;
 
 class CrawlLaiReview implements CrawlService
 {
-    public function crawlData($urlProduct, $originalProductId, $productId){
+    public function crawlData($urlProduct, $originalProductId, $productId): bool
+    {
         $shopName = substr($urlProduct, 8, strpos($urlProduct, ".myshopify.com")-8);
         $apiReviews = "https://reviews.smartifyapps.com/api/load-more?productShopifyId=".$originalProductId."&shopName=".$shopName."&reviewPerPage=10&sortValue=date&rate=null&page=";
 

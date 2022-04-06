@@ -7,7 +7,8 @@ use Symfony\Component\DomCrawler\Crawler;
 
 class CrawlStampedReview implements CrawlService
 {
-    public function crawlData($urlProduct, $originalProductId, $productId){
+    public function crawlData($urlProduct, $originalProductId, $productId): bool
+    {
         $apiGetProductStamped = $this->getApiGetProductsStamped($urlProduct, $originalProductId);
 
         $client = new Client();
