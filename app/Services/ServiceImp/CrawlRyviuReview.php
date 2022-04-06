@@ -2,36 +2,37 @@
 namespace App\Services\ServiceImp;
 use App\Services\CrawlService;
 use GuzzleHttp\Client;
-use Secomapp\ClientApi;
-use Secomapp\Resources\Product;
-use Symfony\Component\DomCrawler\Crawler;
-use GuzzleHttp\Exception\RequestException;
-use Secomapp\Exceptions\ShopifyApiException;
-use App\Services\ReviewService;
+use GuzzleHttp\Exception\GuzzleException;
+
+
 
 class CrawlRyviuReview implements CrawlService
 {
-    public function crawlData($urlProduct, $productIdOriginal, $productId){
+    public function crawlData($urlProduct, $originalProductId, $productId){
         $shopDomain = substr($urlProduct, 8, strpos($urlProduct, '/products')-8);
         $apiGetReviews = "https://app.ryviu.io/frontend/client/get-more-reviews?domain=".$shopDomain;
         $currentPage = 1;
         $ryviuReviews = [];
-        
+
         $client = new Client();
 
         while(1){
             $header = [
                 'headers' => ['Content-Type' => 'application/json'],
                 'body' => json_encode([
-                    "product_id" => $productIdOriginal,
+                    "product_id" => $originalProductId,
                     "page" => $currentPage,
                     "domain" => $shopDomain,
                     "platform" => "shopify"
                 ])
             ];
-            $response = $client->post($apiGetReviews, $header);
-            $data = json_decode((string) $response->getBody())->more_reviews;
-            
+            try {
+                $response = $client->post($apiGetReviews, $header);
+                $data = json_decode((string) $response->getBody())->more_reviews;
+            } catch (GuzzleException $e) {
+                return false;
+            }
+
             if(count($data) == 0) break;
 
             foreach($data as $review){
@@ -47,7 +48,7 @@ class CrawlRyviuReview implements CrawlService
                 $temp['numberLike'] = $review->like;
                 $temp['numberDislike'] = $review->dislike;
 
-                array_push($ryviuReviews, $temp);
+                $ryviuReviews[] = $temp;
             }
 
             $currentPage++;
@@ -55,14 +56,15 @@ class CrawlRyviuReview implements CrawlService
             sleep(0.5);
         }
         // dump($ryviuReviews);
-        return count($ryviuReviews);
+        return true;
     }
 
-    public function checkAppInstalled($urlProductDefault){
+    public function checkAppInstalled($urlProductDefault): bool
+    {
         $client = new Client();
         try{
             $response = $client->get($urlProductDefault);
-        }catch(RequestException $e){
+        }catch(GuzzleException $e){
             return false;
         }
         $string = (string) $response->getBody();

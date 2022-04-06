@@ -12,7 +12,8 @@
         "laravel/sanctum": "^2.11",
         "laravel/tinker": "^2.5",
         "secomapp/laravel-shopify": "~4.0",
-        "symfony/dom-crawler": "^5.4"
+        "symfony/dom-crawler": "^5.4",
+        "ext-json": "*"
     },
     "require-dev": {
         "facade/ignition": "^2.5",

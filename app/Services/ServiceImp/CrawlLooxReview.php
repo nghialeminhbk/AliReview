@@ -2,17 +2,15 @@
 namespace App\Services\ServiceImp;
 use App\Services\CrawlService;
 use GuzzleHttp\Client;
-use Secomapp\ClientApi;
-use Secomapp\Resources\Product;
+use GuzzleHttp\Exception\GuzzleException;
+use InvalidArgumentException as InvalidArgumentExceptionAlias;
 use Symfony\Component\DomCrawler\Crawler;
-use GuzzleHttp\Exception\RequestException;
-use Secomapp\Exceptions\ShopifyApiException;
-use App\Services\ReviewService;
+
 
 class CrawlLooxReview implements CrawlService
 {
-    public function crawlData($urlProduct, $productIdOriginal, $productId){
-        $urlWidget = $this->getUrlWidgetLooxReviews($urlProduct, $productIdOriginal);
+    public function crawlData($urlProduct, $originalProductId, $productId){
+        $urlWidget = $this->getUrlWidgetLooxReviews($urlProduct, $originalProductId);
 
         if(is_null($urlWidget)) return false;
 
@@ -21,19 +19,23 @@ class CrawlLooxReview implements CrawlService
         $currentPage = 1;
         $looxReviews = [];
         while(1){
-            $response = $client->get($urlWidgetPagination.$currentPage);
+            try {
+                $response = $client->get($urlWidgetPagination . $currentPage);
+            } catch (GuzzleException $e) {
+                return false;
+            }
             $html = (string) $response->getBody();
             $crawler = new Crawler($html);
             $row = $crawler->filter('.grid-item-wrap')->each(function( Crawler $node){
                 return [
-                    'immg' => count($node->filter('.item-img > img'))>0?$node->filter('.item-img > img')->attr('src'):null,
+                    'img' => count($node->filter('.item-img > img'))>0?$node->filter('.item-img > img')->attr('src'):null,
                     'authorName' => $node->filter('.title')->text(),
                     'createdAt' => $node->filter('.time')->text(),
                     'rate' => substr($node->filter('.stars')->attr('aria-label'), 0, 1),
                     'title' => null,
                     'content' => $node->filter('.main-text')->text(),
-                    'storeReply' => null,
-                    'storeReplyCreated' => null,
+                    'storeReply' => [],
+                    'storeReplyCreated' => [],
                     'numberLike' => null,
                     'numberDislike' => null,
                 ];
@@ -50,18 +52,19 @@ class CrawlLooxReview implements CrawlService
             $currentPage++;
 
         }
-        // dump($looxReviews);
-        return count($looxReviews);
+         dump(count($looxReviews));
+        return true;
     }
 
-    public function getUrlWidgetLooxReviews($urlProduct, $productIdOriginal){
+    public function getUrlWidgetLooxReviews($urlProduct, $productIdOriginal): ?string
+    {
         $client = new Client();
         try{
-            $response = $client->get($url);
-        }catch(RequestException $e){
+            $response = $client->get($urlProduct);
+        }catch(GuzzleException $e){
             return null;
         }
-        
+
         $htmlString = strip_tags($response->getBody(), ["<script>", "<div>"]);
 
         // crawler
@@ -71,18 +74,19 @@ class CrawlLooxReview implements CrawlService
             $index = strrpos($stringTemp, '/');
             $preSrc = substr($stringTemp, 0, $index + 1);
             $src = $preSrc."reviews/".$productIdOriginal;
-        }catch(\InvalidArgumentException $e){
+        }catch(InvalidArgumentExceptionAlias $e){
             return null;
         }
-        
-        return $src;
-    } 
 
-    public function checkAppInstalled($urlProductDefault){
+        return $src;
+    }
+
+    public function checkAppInstalled($urlProductDefault): bool
+    {
         $client = new Client();
         try{
             $response = $client->get($urlProductDefault);
-        }catch(RequestException $e){
+        }catch(GuzzleException $e){
             return false;
         }
         $string = (string) $response->getBody();

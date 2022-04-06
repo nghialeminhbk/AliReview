@@ -2,24 +2,23 @@
 namespace App\Services\ServiceImp;
 use App\Services\CrawlService;
 use GuzzleHttp\Client;
-use Secomapp\ClientApi;
-use Secomapp\Resources\Product;
-use Symfony\Component\DomCrawler\Crawler;
-use GuzzleHttp\Exception\RequestException;
-use Secomapp\Exceptions\ShopifyApiException;
-use App\Services\ReviewService;
+use GuzzleHttp\Exception\GuzzleException;
 
 class CrawlLaiReview implements CrawlService
 {
-    public function crawlData($urlProduct, $productIdOriginal, $productId){
+    public function crawlData($urlProduct, $originalProductId, $productId){
         $shopName = substr($urlProduct, 8, strpos($urlProduct, ".myshopify.com")-8);
-        $apiReviews = "https://reviews.smartifyapps.com/api/load-more?productShopifyId=".$productIdOriginal."&shopName=".$shopName."&reviewPerPage=10&sortValue=date&rate=null&page=";
+        $apiReviews = "https://reviews.smartifyapps.com/api/load-more?productShopifyId=".$originalProductId."&shopName=".$shopName."&reviewPerPage=10&sortValue=date&rate=null&page=";
 
         $client = new Client();
         $currentPage = 1;
         $laiReviews = [];
         while(1){
-            $response = $client->get($apiReviews.$currentPage);
+            try {
+                $response = $client->get($apiReviews . $currentPage);
+            } catch (GuzzleException $e) {
+                return false;
+            }
             $data = json_decode(base64_decode(json_decode((string) $response->getBody())->blockReviews));
 
             if(count($data) == 0) break;
@@ -42,27 +41,28 @@ class CrawlLaiReview implements CrawlService
                 $temp['numberLike'] = $review->likes??0;
                 $temp['numberDislike'] = $review->dislikes??0;
 
-                array_push($laiReviews, $temp);
+                $laiReviews[] = $temp;
             }
 
             $currentPage++;
 
             sleep(0.5);
         }
-        dump($laiReviews);
-        return count($laiReviews);
+        dump(count($laiReviews));
+        return true;
     }
 
-    public function checkAppInstalled($urlProductDefault){
+    public function checkAppInstalled($urlProductDefault): bool
+    {
         $client = new Client();
         try{
-            $response = $client->get($urlProductDefault); 
-        }catch(RequestException $e){
+            $response = $client->get($urlProductDefault);
+        }catch(GuzzleException $e){
             return false;
         }
         $string = (string) $response->getBody();
-       
-        if(strpos($string, "https://reviews.smartifyapps.com/api/load-more")){
+
+        if(strpos($string, "https://reviews.smartifyapps.com/api/")){
             return true;
         }
 

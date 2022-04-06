@@ -8,21 +8,22 @@ use App\Services\ServiceImp\CrawlRivyoReview;
 class CrawlRivyoReviewTest extends TestCase
 {
     /**
-     * @param array $shopName
+     * @param $urlProductDefault
      * @param bool $expectedResult
-     * 
-     * @dataProvider providerTestCheckReviewsInstalled
+     *
+     * @dataProvider providerTestCheckAppInstalled
      */
-    public function testCheckAppInstalled($shopName, $expectedResult){
+    public function testCheckAppInstalled($urlProductDefault, bool $expectedResult){
         $crawlReview = new CrawlRivyoReview();
-        $result = $crawlReview->checkStoreInstalledRivyoReview($shopName);
+        $result = $crawlReview->checkAppInstalled($urlProductDefault);
         $this->assertEquals($expectedResult, $result);
     }
 
-    public function providerTestCheckReviewsInstalled(){
+    public function providerTestCheckAppInstalled(): array
+    {
         return [
-            ["thimatic-product-review", true],
-            ["nghialm", false],
+            ["https://rv-test-1.myshopify.com/products/2020-fashion-geometric-butterfly-clip-earring-for-teens-women-ear-cuffs-cool-jewelry-retro-chain-long-hanging-earings-metal-gift", true],
+            ["https://thimatic-product-review.myshopify.com/products/black-t-shirt", true],
             ["rv-test-1", false]
         ];
     }
@@ -30,20 +31,27 @@ class CrawlRivyoReviewTest extends TestCase
     /**
      * @param array $inputParam
      * @param bool $expectedResult
-     * 
-     * @dataProvider providerTestCrawData
+     *
+     * @dataProvider providerTestCrawlData
      */
-    public function testCrawData($inputParam, $expectedResult){
+    public function testCrawlData(array $inputParam, bool $expectedResult){
         $crawlReview = new CrawlRivyoReview();
-        $result = $crawlReview->crawData($inputParam['url'], $inputParam['productId']);
+        $result = $crawlReview->crawlData($inputParam['url'], $inputParam['originalProductId'], $inputParam['productId']);
         $this->assertEquals($expectedResult, $result);
     }
 
-    public function providerTestCrawData(){
+    public function providerTestCrawlData(): array
+    {
         return [
-            [['url' => 'https://thimatic-product-review.myshopify.com/products/black-t-shirt', 'productId' => '1'], 17],
-            [['url' => 'https://thimatic-product-review.myshopify.com/products/orange-t-shirt', 'productId' => '1'], 9],
-            [['url' => 'https://thimatic-product-review.myshopify.com/products/yellow-t-shirt', 'productId' => '1'], 17]
+            [['url' => 'https://thimatic-product-review.myshopify.com/products/black-t-shirt',
+                'originalProductId' => '4615395082303',
+                'productId' => '1'], true],
+            [['url' => 'https://thimatic-product-review.myshopify.com/products/orange-t-shirt',
+                'originalProductId' => '4615395770431',
+                'productId' => '1'], true],
+            [['url' => 'https://thimatic-product-review.myshopify.com/products/yellow-t-shirt',
+                'originalProductId' => '4615395934271',
+                'productId' => '1'], true]
         ];
     }
 }

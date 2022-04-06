@@ -2,20 +2,19 @@
 namespace App\Services\ServiceImp;
 use App\Services\CrawlService;
 use GuzzleHttp\Client;
-use Secomapp\ClientApi;
-use Secomapp\Resources\Product;
+use GuzzleHttp\Exception\GuzzleException;
+use InvalidArgumentException as InvalidArgumentExceptionAlias;
 use Symfony\Component\DomCrawler\Crawler;
-use GuzzleHttp\Exception\RequestException;
-use Secomapp\Exceptions\ShopifyApiException;
-use App\Services\ReviewService;
+
 
 class CrawlYotpoReview implements CrawlService
 {
-    public function crawlData($urlProduct,$productIdOriginal, $productId){
+    public function crawlData($urlProduct, $originalProductId, $productId): bool
+    {
         $apiWidget = $this->apiYoptoWidgetReview($urlProduct);
 
         if(is_null($apiWidget)) return false;
-
+        $client = new Client();
         $currentPage = 1;
         $yotpoReviews = [];
         while(1){
@@ -24,17 +23,21 @@ class CrawlYotpoReview implements CrawlService
                     [
                         "method" => "reviews",
                         "params" => [
-                            "pid" => $productIdOriginal,
+                            "pid" => $originalProductId,
                             "order_metadata_fields" => [],
-                            "widget_product_id" => $productIdOriginal,
+                            "widget_product_id" => $originalProductId,
                             "data_source" => "default",
                             "page" => $currentPage,
                             "host-widget" => "main_widget"]
                         ]])
             ];
-            $response = $client->get($apiWidget, [
-                'query' => $param
-            ]);
+            try {
+                $response = $client->get($apiWidget, [
+                    'query' => $param
+                ]);
+            } catch (GuzzleException $e) {
+                return false;
+            }
             $html = json_decode((string) $response->getBody())->result;
             $crawler = new Crawler($html);
             $row = $crawler
@@ -69,14 +72,15 @@ class CrawlYotpoReview implements CrawlService
         return true;
     }
 
-    public function apiYoptoWidgetReview($url){
+    public function apiYoptoWidgetReview($url): ?string
+    {
         $client = new Client();
         try{
             $response = $client->get($url);
-        }catch(RequestException $e){
+        }catch(GuzzleException $e){
             return null;
         }
-        
+
         $htmlString = (string) $response->getBody();
 
         // crawler
@@ -91,24 +95,30 @@ class CrawlYotpoReview implements CrawlService
                     break;
                 }
             }
-        }catch(\InvalidArgumentException $e){
+        }catch(InvalidArgumentExceptionAlias $e){
             return null;
         }
-        
-        return "https://staticw2.yotpo.com/batch/app_key/".$appKey."/yotpo_site_reviews";
-    } 
 
-    public function checkAppInstalled($urlProductDefault){
+        return "https://staticw2.yotpo.com/batch/app_key/".$appKey."/yotpo_site_reviews";
+    }
+
+    public function checkAppInstalled($urlProductDefault): bool
+    {
         $client = new Client();
         try{
             $response = $client->get($urlProductDefault);
-        }catch(RequestException $e){
+        }catch(GuzzleException $e){
             return false;
         }
-        $string = (string) $response->getBody();
+        $html = (string) $response->getBody();
 
-        if(strpos($string, "staticw2.yotpo.com")){
-            return true;
+        $crawler = new Crawler($html);
+        try{
+            if(count($crawler->filter('.yotpo-main-widget'))>0){
+                return true;
+            }
+        }catch(InvalidArgumentExceptionAlias $e){
+            return false;
         }
 
         return false;

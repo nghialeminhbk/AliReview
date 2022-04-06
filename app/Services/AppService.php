@@ -3,6 +3,7 @@
 namespace App\Services;
 use App\Models\App;
 use Secomapp\ClientApi;
+use Secomapp\Exceptions\ShopifyApiException;
 use Secomapp\Resources\Product;
 use App\Services\ServiceImp\CrawlAliReview;
 use App\Services\ServiceImp\CrawlFeraReview;
@@ -16,7 +17,7 @@ use App\Services\ServiceImp\CrawlYotpoReview;
 use App\Services\ServiceImp\CrawlStampedReview;
 use App\Services\ServiceImp\CrawlShopifyReview;
 
-class AppService 
+class AppService
 {
     protected CrawlService $crawlService;
 
@@ -29,13 +30,13 @@ class AppService
     }
 
     public function add(array $data){
-        $app = new App(); 
+        $app = new App();
         $app->shop_name = $data['shopName'];
         $app->access_token = $data['accessToken'];
         $app->save();
         return $app->id;
     }
-    
+
     public function delete($appId) : bool{
         $app = App::find($appId);
         $app->delete();
@@ -46,9 +47,12 @@ class AppService
         $result = [];
         $client = new ClientApi(false, "2022-01", $shopName, $accessToken);
         $productApi = new Product($client);
-        $productRandom = $productApi->all([
-            'limit' => '1'
-        ])[0];
+        try {
+            $productRandom = $productApi->all([
+                'limit' => '1'
+            ])[0];
+        } catch (ShopifyApiException $e) {
+        }
         $urlProductDefault = "https://".$shopName.".myshopify.com/products/".$productRandom->handle;
 
         $apps = [
@@ -66,7 +70,7 @@ class AppService
         ];
         foreach($apps as $appText => $instance){
             $this->crawlService = $instance;
-            if($this->crawlService->checkAppInstalled($urlProductDefault)) array_push($result, $appText);
+            if($this->crawlService->checkAppInstalled($urlProductDefault)) $result[] = $appText;
         }
         return $result;
     }

@@ -2,25 +2,26 @@
 namespace App\Services\ServiceImp;
 use App\Services\CrawlService;
 use GuzzleHttp\Client;
-use Secomapp\ClientApi;
-use Secomapp\Resources\Product;
+use GuzzleHttp\Exception\GuzzleException;
 use Symfony\Component\DomCrawler\Crawler;
-use GuzzleHttp\Exception\RequestException;
-use Secomapp\Exceptions\ShopifyApiException;
-use App\Services\ReviewService;
+
 
 class CrawlRivyoReview implements CrawlService
 {
-    public function crawlData($urlProduct, $productIdOriginal, $productId){
-        $shopDomain = substr($urlProduct, 8, strpos($urlProduct, '/products')-8);;
+    public function crawlData($urlProduct, $originalProductId, $productId){
+        $shopDomain = substr($urlProduct, 8, strpos($urlProduct, '/products')-8);
         $productHandle = substr($urlProduct, strrpos($urlProduct, '/') + 1, strlen($urlProduct) - strrpos($urlProduct, '/'));
         $limit = 0;
-        $apiGetProductRivyo = "https://thimatic-apps.com/product_review/get_product_review_filter.php?shop=".$shopDomain."&product_handle=".$productHandle."&product_id=".$productIdOriginal."&limit="; 
+        $apiGetProductRivyo = "https://thimatic-apps.com/product_review/get_product_review_filter.php?shop=".$shopDomain."&product_handle=".$productHandle."&product_id=".$originalProductId."&limit=";
         $rivyoReviews = [];
         $client = new Client();
 
         while(1){
-            $response = $client->post($apiGetProductRivyo.$limit);
+            try {
+                $response = $client->post($apiGetProductRivyo . $limit);
+            } catch (GuzzleException $e) {
+                return false;
+            }
             $html = (string) $response->getBody();
             $crawler = new Crawler($html);
 
@@ -34,13 +35,13 @@ class CrawlRivyoReview implements CrawlService
                     return $node->filter('img')->attr('href');
                 }):null;
                 $temp['createdAt'] = $node->filter('.wc_review_date')->text();
-                $temp['storeReply'] = null;
-                $temp['storeReplyCreated'] = null;
+                $temp['storeReply'] = [];
+                $temp['storeReplyCreated'] = [];
                 $temp['numberLike'] = $node->filter('.like_count_cls')->first()->text();
                 $temp['numberDislike'] = $node->filter('.like_count_cls')->last()->text();
                 return 1;
             });
-            
+
             if(count($row) == 0) break;
 
             $rivyoReviews = array_merge($rivyoReviews, $row);
@@ -49,14 +50,15 @@ class CrawlRivyoReview implements CrawlService
 
             sleep(0.5);
         }
-        return count($rivyoReviews);
+        return true;
     }
 
-    public function checkAppInstalled($urlProductDefault){
+    public function checkAppInstalled($urlProductDefault): bool
+    {
         $client = new Client();
         try{
             $response = $client->get($urlProductDefault);
-        }catch(RequestException $e){
+        }catch(GuzzleException $e){
             return false;
         }
         $string = (string) $response->getBody();

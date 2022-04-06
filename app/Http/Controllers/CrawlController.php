@@ -4,8 +4,6 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Secomapp\ClientApi;
-use GuzzleHttp\Client;
-use Symfony\Component\DomCrawler\Crawler;
 use Secomapp\Resources\Product;
 use App\Services\CrawlService;
 use App\Services\AppService;
@@ -13,13 +11,7 @@ use App\Services\ProductService;
 use App\Services\ReviewService;
 use Secomapp\Exceptions\ShopifyApiException;
 use App\Services\ServiceImp\CrawlAliReview;
-use App\Services\ServiceImp\CrawlLooxReview;
-use App\Services\ServiceImp\CrawlJudgeReview;
-use App\Services\ServiceImp\CrawlFeraReview;
-use App\Services\ServiceImp\CrawlRyviuReview;
-use App\Services\ServiceImp\CrawlStampedReview;
 use App\Services\ServiceImp\CrawlRivyoReview;
-use App\Services\ServiceImp\CrawlLaiReview;
 
 class CrawlController extends Controller
 {
@@ -40,11 +32,11 @@ class CrawlController extends Controller
 
     public function crawl(Request $request){
         ini_set('max_execution_time', 1800);
-        
-        $shopName = $request->shopName;
-        $accessToken = $request->accessToken;  
 
-        $this->crawlService = new CrawlAliReview(); 
+        $shopName = $request->input('shopName');
+        $accessToken = $request->input('accessToken');
+
+        $this->crawlService = new CrawlAliReview();
         if(!$this->checkValidToken($shopName, $accessToken)){
             return response()->json([
                 'type' => 'error',
@@ -52,7 +44,7 @@ class CrawlController extends Controller
             ]);
         }
 
-        if(!$this->crawlService->checkAliReviewsInstalled($shopName, $accessToken)){
+        if(!$this->crawlService->checkAppInstalled("13231")){
             return response()->json([
                 'type' => 'error',
                 'message' => 'Shop dont install AliReviews App or Shop has no products!'
@@ -82,7 +74,7 @@ class CrawlController extends Controller
 
             if(count($row) == 0) break;
             $markProductId = $row[count($row)-1]->id;
-            
+
             foreach($row as $product){
                 $productId = $this->productService->add([
                     'appId' => $appId,
@@ -95,7 +87,7 @@ class CrawlController extends Controller
                 ]);
 
                 $urlProduct = 'https://'.$shopName.'.myshopify.com/products/'.$product->handle;
-                $this->crawlService->crawlData($urlProduct, $productId);
+                $this->crawlService->crawlData($urlProduct,"12", $productId);
             }
 
             sleep(0.5);
@@ -105,14 +97,15 @@ class CrawlController extends Controller
             'type' => 'success',
             'message' => "Craw data success!"
         ]);
-        
+
     }
 
-    public function checkValidToken($shopName, $accessToken){
+    public function checkValidToken($shopName, $accessToken) : bool
+    {
         $client = new ClientApi(false, "2022-01", $shopName, $accessToken);
         $productApi = new Product($client);
         try{
-            $products = $productApi->all([
+            $productApi->all([
                 'limit' => 1
             ]);
         }catch(ShopifyApiException $e){
@@ -123,11 +116,17 @@ class CrawlController extends Controller
     }
 
     public function test(){
-        $this->crawlService = new CrawlLaiReview();
+        $this->crawlService = new CrawlAliReview();
         // dump($this->crawlService->crawlData("https://smartify-reviews-app-demo.myshopify.com/products/sample-product", "6868040188112", 0)); return;
 
         // dump($this->crawlService->checkAppInstalled("https://rv-test-1.myshopify.com/products/1-pcs-medical-stainless-steel-crystal-zircon-ear-studs-earrings-for-women-men-4-prong-tragus-cartilage-piercing-jewelry")); return;
 
-        dump($this->appService->getInstalledApps('rv-test-1', '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'));
+//         dump($this->appService->getInstalledApps('rv-test-1', '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'));
+        // dump($this->crawlService->getApiGetProductsStamped("https://rv-test-1.myshopify.com/products/aachoae-women-elegant-long-wool-coat-with-belt-solid-color-long-sleeve-chic-outerwear-ladies-drop-shoulder-overcoat-2021", "6807065755692")); return;
+        // dump($this->crawlService->crawlData("https://rv-test-1.myshopify.com/products/aachoae-women-elegant-long-wool-coat-with-belt-solid-color-long-sleeve-chic-outerwear-ladies-drop-shoulder-overcoat-2021", "6807065755692", "1")); return;
+        // dump($this->crawlService->crawlData("https://rv-test-1.myshopify.com/products/chic-women-trench-coat-casual-women-39-s-long-outerwear-loose-overcoat-autumn-winter-fashion-double-breasted-windbreaker-femme", "6807065690156", "1")); return;
+//        dump($this->crawlService->crawlData("https://rv-test-1.myshopify.com/products/chic-women-trench-coat-casual-women-39-s-long-outerwear-loose-overcoat-autumn-winter-fashion-double-breasted-windbreaker-femme", "6807065690156", "1"));
+
+        $this->crawlService->checkAppInstalled("https://ali-reviews-fireapps.myshopify.com/products/charmsmic-new-striped");
     }
 }

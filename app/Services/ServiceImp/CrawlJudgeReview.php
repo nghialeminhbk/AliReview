@@ -2,16 +2,14 @@
 namespace App\Services\ServiceImp;
 use App\Services\CrawlService;
 use GuzzleHttp\Client;
-use Secomapp\ClientApi;
-use Secomapp\Resources\Product;
+use GuzzleHttp\Exception\GuzzleException;
+use InvalidArgumentException as InvalidArgumentExceptionAlias;
 use Symfony\Component\DomCrawler\Crawler;
-use GuzzleHttp\Exception\RequestException;
-use Secomapp\Exceptions\ShopifyApiException;
-use App\Services\ReviewService;
+
 
 class CrawlJudgeReview implements CrawlService
 {
-    public function crawlData($urlProduct, $productIdOriginal, $productId){
+    public function crawlData($urlProduct, $originalProductId, $productId){
         $urlWidget = $this->getUrlWidgetJudgeReviews($urlProduct);
 
         if(is_null($urlWidget)) return false;
@@ -20,7 +18,11 @@ class CrawlJudgeReview implements CrawlService
         $judgeReviews = [];
         $client = new Client();
         while(1){
-            $response = $client->get($urlWidget.$currentPage);
+            try {
+                $response = $client->get($urlWidget . $currentPage);
+            } catch (GuzzleException $e) {
+                return false;
+            }
             $html = json_decode((string) $response->getBody())->html;
             $crawler = new Crawler($html);
 
@@ -35,8 +37,8 @@ class CrawlJudgeReview implements CrawlService
                     'rate' => $node->filter('.jdgm-rev__rating')->attr('data-score'),
                     'title' => $node->filter('.jdgm-rev__title')->text(),
                     'content' => $node->filter('.jdgm-rev__body > p')->text(),
-                    'storeReply' => count($node->filter('.jdgm-rev__reply-content'))>0?$node->filter('.jdgm-rev__reply-content')->text():null,
-                    'storeReplyCreated' => null,
+                    'storeReply' => count($node->filter('.jdgm-rev__reply-content'))>0?$node->filter('.jdgm-rev__reply-content')->each(function(Crawler $node){ return $node->text();}):[],
+                    'storeReplyCreated' => [],
                     'numberLike' => null,
                     'numberDislike' => null
                 ];
@@ -52,16 +54,17 @@ class CrawlJudgeReview implements CrawlService
 
             $currentPage++;
         }
-        // dump($judgeReviews);
-        return count($judgeReviews);
+        dump(count($judgeReviews));
+        return true;
     }
 
-    public function getUrlWidgetJudgeReviews($url){
+    public function getUrlWidgetJudgeReviews($url): ?string
+    {
         $shopDomain = substr($url, 8, strpos($url, '/products')-8);
         $client = new Client();
         try{
             $response = $client->get($url);
-        }catch(RequestException $e){
+        }catch(GuzzleException $e){
             return null;
         }
         $html = (string) $response->getBody();
@@ -70,7 +73,7 @@ class CrawlJudgeReview implements CrawlService
         $crawler = new Crawler($html);
         try{
             $productId = $crawler->filter('#judgeme_product_reviews')->attr('data-id');
-        }catch(\InvalidArgumentException $e){
+        }catch(InvalidArgumentExceptionAlias $e){
             return null;
         }
 
@@ -78,11 +81,12 @@ class CrawlJudgeReview implements CrawlService
 
     }
 
-    public function checkAppInstalled($urlProductDefault){
+    public function checkAppInstalled($urlProductDefault): bool
+    {
         $client = new Client();
         try{
-            $response = $client->get($urlProductDefault); 
-        }catch(RequestException $e){
+            $response = $client->get($urlProductDefault);
+        }catch(GuzzleException $e){
             return false;
         }
         $string = (string) $response->getBody();

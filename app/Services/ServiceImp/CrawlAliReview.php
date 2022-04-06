@@ -2,20 +2,19 @@
 namespace App\Services\ServiceImp;
 use App\Services\CrawlService;
 use GuzzleHttp\Client;
-use Secomapp\ClientApi;
-use Secomapp\Resources\Product;
+use GuzzleHttp\Exception\GuzzleException;
+use InvalidArgumentException as InvalidArgumentExceptionAlias;
 use Symfony\Component\DomCrawler\Crawler;
-use GuzzleHttp\Exception\RequestException;
-use Secomapp\Exceptions\ShopifyApiException;
 use App\Services\ReviewService;
 
 class CrawlAliReview implements CrawlService{
     protected ReviewService $reviewService;
 
-    public function crawlData($urlProduct, $productIdOriginal, $productId){
+    public function crawlData($urlProduct, $originalProductId, $productId): bool
+    {
         $this->reviewService = new ReviewService();
         $src = $this->getUrlWidgetAliReviews($urlProduct);
-        
+
         if(is_null($src)) return false;
 
         $client = new Client();
@@ -23,10 +22,15 @@ class CrawlAliReview implements CrawlService{
         $currPage = 1;
         $aliReviews = [];
         while(true){
-            $response = $client->get($urlAliReview.$currPage);
-            $html = (string) $response->getBody();
+            try {
+                $response = $client->get($urlAliReview . $currPage);
+                $html = (string) $response->getBody();
+            } catch (GuzzleException $e) {
+                return false;
+            }
+
             $crawler = new Crawler($html);
-            $row = $crawler->filter('.alireview-row')->each(function( Crawler $node ){    
+            $row = $crawler->filter('.alireview-row')->each(function( Crawler $node ){
                 return [
                     'rate' => $node->filter('.alr-rating')->attr('value'),
                     'author' => [
@@ -50,67 +54,69 @@ class CrawlAliReview implements CrawlService{
                 break;
             }
 
-            foreach($row as $review){
-                $this->reviewService->add([
-                    'productId' => $productId,
-                    'rate' => $review['rate'],
-                    'authorName' => $review['author']['name'],
-                    'authorAvt' => $review['author']['avt'],
-                    'title' => $review['title'],
-                    'content' => $review['content'],
-                    'img' => $review['img'],
-                    'createdAt' => $review['createdAt'],
-                    'storeReply' => $review['storeReply'],
-                    'storeReplyCreated' => $review['storeReplyCreated'],
-                    'numberLike' => $review['numberLike'],
-                    'numberDislike' => $review['numberDislike']
-                ]);
-            }
+//            foreach($row as $review){
+//                 save to db
+//                 $this->reviewService->add([
+//                     'productId' => $productId,
+//                     'rate' => $review['rate'],
+//                     'authorName' => $review['author']['name'],
+//                     'authorAvt' => $review['author']['avt'],
+//                     'title' => $review['title'],
+//                     'content' => $review['content'],
+//                     'img' => $review['img'],
+//                     'createdAt' => $review['createdAt'],
+//                     'storeReply' => $review['storeReply'],
+//                     'storeReplyCreated' => $review['storeReplyCreated'],
+//                     'numberLike' => $review['numberLike'],
+//                     'numberDislike' => $review['numberDislike']
+//                 ]);
+//            }
 
             $aliReviews = array_merge($aliReviews, $row);
 
             $currPage += 1;
-            
+
             sleep(0.5);
         }
-        // dump($aliReviews);
+         dump(count($aliReviews));
         return true;
     }
 
-    public function getUrlWidgetAliReviews($urlProduct){
+    public function getUrlWidgetAliReviews($urlProduct): ?string
+    {
         $client = new Client();
         try{
             $response = $client->get($urlProduct);
-        }catch(RequestException $e){
+        }catch(GuzzleException $e){
             return null;
         }
-        
+
         $htmlString = strip_tags($response->getBody(), ["<iframe>"]);
 
         // crawler
         $crawler = new Crawler($htmlString);
         try{
-            $src = $crawler->filter(".aliReviewsFrame")->reduce(function (Crawler $node, $i){
+            $src = $crawler->filter(".aliReviewsFrame")->reduce(function (Crawler $node){
                 return ($node->attr("widget-id"));
             })->attr("data-ar-src");
-        }catch(\InvalidArgumentException $e){
+        }catch(InvalidArgumentExceptionAlias $e){
             return null;
         }
-        
+
         return $src;
     }
 
-    public function checkAppInstalled($urlProductDefault){
+    public function checkAppInstalled($urlProductDefault): bool
+    {
         $client = new Client();
         try{
             $response = $client->get($urlProductDefault);
-        }catch(RequestException $e){
+        }catch(GuzzleException $e){
             return false;
         }
-        $html = strip_tags((string) $response->getBody(), ["<iframe>"]);
-        $crawler = new Crawler($html);
+        $string = (string) $response->getBody();
 
-        if(count($crawler->filter('.aliReviewsFrame')) > 0){
+        if(strpos($string, "widget.alireviews.io/widget")){
             return true;
         }
 

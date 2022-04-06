@@ -8,62 +8,45 @@ use App\Services\ServiceImp\CrawlAliReview;
 class CrawAliReviewTest extends TestCase
 {
     /**
-     * @param array $infoShop
+     * @param $urlProductDefault
      * @param bool $expectedResult
-     * 
-     * @dataProvider providerTestCheckAliReviewsInstall
+     *
+     * @dataProvider providerTestCheckAppInstalled
      */
-    public function testCheckAliReviewsInstall($infoShop, $expectedResult){
+    public function testCheckAppInstalled($urlProductDefault, bool $expectedResult){
         $crawlAliReview = new CrawlAliReview();
-        $result = $crawlAliReview->checkAliReviewsInstalled($infoShop['shopName'], $infoShop['accessToken']);
+        $result = $crawlAliReview->checkAppInstalled($urlProductDefault);
         $this->assertEquals($expectedResult, $result);
     }
 
-    public function providerTestCheckAliReviewsInstall(){
+    public function providerTestCheckAppInstalled(): array
+    {
         return [
-            [['shopName' => 'nghialm', 'accessToken' => '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'], false],
-            [['shopName' => 'rv-test-1', 'accessToken' => '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'], true],
-            [['shopName' => 'rv-test-2', 'accessToken' => 'shpat_17ab166f1c41bd0d73c29cfdb40e673'], false]
+            ["https://ali-reviews-fireapps.myshopify.com/products/charmsmic-new-striped", true],
+            ["https://ali-reviews-fireapps.myshopify.com/products/bamoer-authentic-100", true],
+            ["https://ali-reviews-fissreapps.myshopify.com/products/bamoer-authentic-100", false],
+            ["https://rv-test-1.myshopify.com/products/1-pcs-medical-stainless-steel-crystal-zircon-ear-studs-earrings-for-women-men-4-prong-tragus-cartilage-piercing-jewelry", true]
         ];
     }
 
     /**
      * @param array $inputParam
      * @param bool $expectedResult
-     * 
-     * @dataProvider providerTestCrawData
+     *
+     * @dataProvider providerTestCrawlData
      */
-    public function testCrawData($inputParam, $expectedResult){
-        $crawAliReview = new CrawAliReview();
-        $result = $crawAliReview->crawData($inputParam['url'], $inputParam['productId']);
+    public function testCrawlData(array $inputParam, bool $expectedResult){
+        $crawAliReview = new CrawlAliReview();
+        $result = $crawAliReview->crawlData($inputParam['url'], $inputParam['productIdOriginal'], $inputParam['productId']);
         $this->assertEquals($expectedResult, $result);
     }
 
-    public function providerTestCrawData(){
+    public function providerTestCrawlData(): array
+    {
         return [
-            [['url' => 'https://rv-test-1.myshopify.com/products/1-piece-stainless-steel-painless-ear-clip-earrings-for-men-women-punk-silver-color-non-piercing-fake-earrings-jewelry-gifts', 'productId' => '1'], true],
-            [['url' => 'https://rv-test-1.myshopify.com/products/17km-gold-leaves-ear-cuff-black-non-piercing-ear-clips-fake-cartilage-earrings-clip-earrings-for-women-men-who', 'productId' => '1'], false],
-            [['url' => 'https://rv-test-1.myshopify.com/products/abstract-v-back-cami', 'productId' => '1'], true]
-        ];
-    }
-
-    /**
-     * @param string $urlProduct
-     * @param string @expectedurlWidget
-     * 
-     * @dataProvider providerTestGetUrlWidgetAliReviews
-     */
-    public function testGetUrlWidgetAliReviews($urlProduct, $expectedUrlWidget){
-        $crawAliReview = new CrawAliReview();
-        $result = $crawAliReview->getUrlWidgetAliReviews($urlProduct);
-        $this->assertEquals($expectedUrlWidget, $result);
-    }
-
-    public function providerTestGetUrlWidgetAliReviews(){
-        return [
-            ['https://rv-test-1.myshopify.com/products/1-piece-stainless-steel-painless-ear-clip-earrings-for-men-women-punk-silver-color-non-piercing-fake-earrings-jewelry-gifts', 'https://widget.alireviews.io/widget/review-widget?shop_id=36179214380&widget_id=147948&type_page=product&product_id=6807811588140&isAdminLogin=false&star=all&customer_id=&product_in_cart=&num_rand=0&total_order_values=0&avg_order_value=0&tag=&country=&last_purchase=&t=1647943423'],
-            ['https://rv-test-1.myshopify.com/products/1pcs-pvc-new-style-game-machine-keychain-amp-keyring-cute-gamepad-joystick-key-chain-keychains-bag-car-hanging-fit-men-boy-keys', 'https://widget.alireviews.io/widget/review-widget?shop_id=36179214380&widget_id=147948&type_page=product&product_id=6807811489836&isAdminLogin=false&star=all&customer_id=&product_in_cart=&num_rand=0&total_order_values=0&avg_order_value=0&tag=&country=&last_purchase=&t=1647943423'],
-            ['https://rv-test-1.myshopify.com/products/aachoae-women-elegant-long-wool-coat-with-belt-solid-color-long-sleeve-chic-outerwear-ladies-drop-shoulder-overcoat-2021', 'https://widget.alireviews.io/widget/review-widget?shop_id=36179214380&widget_id=147948&type_page=product&product_id=6807065755692&isAdminLogin=false&star=all&customer_id=&product_in_cart=&num_rand=0&total_order_values=0&avg_order_value=0&tag=&country=&last_purchase=&t=1647943423'],
+            [['url' => 'https://rv-test-1.myshopify.com/products/1-piece-stainless-steel-painless-ear-clip-earrings-for-men-women-punk-silver-color-non-piercing-fake-earrings-jewelry-gifts', 'productIdOriginal' => '6807811588140', 'productId' => '1'], true],
+            [['url' => 'https://rv-test-1.myshopify.com/products/17km-gold-leaves-ear-cuff-black-non-piercing-ear-clips-fake-cartilage-earrings-clip-earrings-for-women-men-who', 'productIdOriginal' => '6807811588140', 'productId' => '1'], false],
+            [['url' => 'https://rv-test-1.myshopify.com/products/abstract-v-back-cami', 'productIdOriginal' => '4820800241708', 'productId' => '1'], true]
         ];
     }
 }
